@@ -4,123 +4,81 @@ const db = require('../database');
 const mikrotik = require('../services/mikrotik');
 const { v4: uuidv4 } = require('uuid');
 
-// ================================
-// POST /webhook/infinitepay
-// InfinitePay chama aqui quando pagamento é confirmado
-// ================================
+const processados = new Set();
+
 router.post('/infinitepay', async (req, res) => {
+  res.status(200).json({ success: true });
   try {
-    const payload = req.body;
-    console.log('📥 Webhook recebido:', JSON.stringify(payload, null, 2));
-
-    // Responde 200 imediatamente para a InfinitePay não retentar
-    res.status(200).json({ recebido: true });
-
-    // Processar de forma assíncrona
-    await processarPagamento(payload);
+    console.log('📥 Webhook recebido:', JSON.stringify(req.body));
+    await processarPagamento(req.body);
   } catch (err) {
     console.error('❌ Erro no webhook:', err);
-    res.status(200).json({ recebido: true }); // Sempre 200 para evitar retentativas
   }
 });
 
-// ================================
-// PROCESSAR PAGAMENTO CONFIRMADO
-// ================================
 async function processarPagamento(payload) {
+  const { order_nsu, amount, items } = payload;
+  if (!order_nsu) return;
+
+  if (processados.has(order_nsu)) {
+    console.log('⚠️ Já processado:', order_nsu);
+    return;
+  }
+
+  const desc = items?.[0]?.description || '';
+  const ipMatch  = desc.match(/IP:\s*([^|]+)/);
+  const macMatch = desc.match(/MAC:\s*([^|]+)/);
+  const ipCliente  = ipMatch  ? ipMatch[1].trim()  : null;
+  const macCliente = macMatch ? macMatch[1].trim()  : null;
+
+  console.log(`💳 Processando: ${order_nsu}`);
+
+  const venda = db.getVenda(order_nsu);
+  if (!venda) { console.log(`⚠️ Venda não encontrada: ${order_nsu}`); return; }
+  if (venda.status === 'pago') { console.log(`⚠️ Venda já paga: ${order_nsu}`); return; }
+
+  const plano = db.getPlano(venda.plano_id);
+  if (!plano) { console.log(`⚠️ Plano não encontrado: ${venda.plano_id}`); return; }
+
+  const username = `wa_${Date.now()}`;
+  const password = uuidv4().substring(0, 8);
+  const valor = ((amount || 0) / 100).toFixed(2);
+
+  console.log(`🎉 Pagamento confirmado! Plano: ${plano.nome} | R$${valor}`);
+
   try {
-    // Identificar venda pelo order_nsu
-    const vendaId = payload.order_nsu;
-    if (!vendaId) {
-      console.log('⚠️ Webhook sem order_nsu, ignorando');
-      return;
-    }
-
-    // Verificar se é pagamento confirmado
-    const statusPago = ['paid', 'approved', 'captured', 'succeeded'];
-    const statusPayload = payload.status?.toLowerCase() || '';
-    if (!statusPago.includes(statusPayload)) {
-      console.log(`⚠️ Status não é pagamento: ${statusPayload}`);
-      return;
-    }
-
-    // Buscar venda no banco
-    const venda = db.getVenda(vendaId);
-    if (!venda) {
-      console.log(`⚠️ Venda não encontrada: ${vendaId}`);
-      return;
-    }
-
-    // Evitar processamento duplicado
-    if (venda.status === 'pago') {
-      console.log(`⚠️ Venda já processada: ${vendaId}`);
-      return;
-    }
-
-    // Buscar plano
-    const plano = db.getPlano(venda.plano_id);
-    if (!plano) {
-      console.log(`⚠️ Plano não encontrado: ${venda.plano_id}`);
-      return;
-    }
-
-    // Gerar credenciais para o cliente
-    const username = `wa_${Date.now()}`;
-    const password = uuidv4().substring(0, 8);
-
-    console.log(`💳 Pagamento confirmado! Venda: ${vendaId} | Plano: ${plano.nome}`);
-
-    // Criar usuário no Mikrotik
     await mikrotik.criarUsuario({
-      username,
-      password,
-      profile: plano.id, // plano-10min, plano-30min, etc
-      macCliente: venda.mac_cliente,
+      username, password, profile: plano.id,
+      macCliente: venda.mac_cliente || macCliente,
     });
-
-    // Se tiver IP do cliente, logar automaticamente
-    if (venda.ip_cliente && venda.ip_cliente !== '::1') {
-      await mikrotik.loginCliente({
-        username,
-        password,
-        ipCliente: venda.ip_cliente,
-      });
+    const ip = venda.ip_cliente || ipCliente;
+    if (ip && ip !== '::1' && ip !== '127.0.0.1') {
+      await mikrotik.loginCliente({ username, password, ipCliente: ip });
     }
-
-    // Atualizar venda no banco
-    db.atualizarVenda(vendaId, {
-      status: 'pago',
-      mikrotik_user: username,
-      inicio_sessao: new Date().toISOString(),
-    });
-
-    console.log(`✅ Acesso liberado! Cliente: ${username} | Plano: ${plano.nome} (${plano.minutos}min)`);
   } catch (err) {
-    console.error('❌ Erro ao processar pagamento:', err);
-  }
-}
-
-// ================================
-// POST /webhook/teste
-// Simular pagamento para testes
-// ================================
-router.post('/teste', async (req, res) => {
-  const adminPassword = req.headers['x-admin-password'];
-  if (adminPassword !== process.env.ADMIN_PASSWORD) {
-    return res.status(401).json({ erro: 'Não autorizado' });
+    console.error('❌ Erro Mikrotik (venda registrada):', err.message);
   }
 
-  const { venda_id } = req.body;
-  if (!venda_id) {
-    return res.status(400).json({ erro: 'venda_id obrigatório' });
-  }
-
-  await processarPagamento({
-    order_nsu: venda_id,
-    status: 'paid',
+  db.atualizarVenda(order_nsu, {
+    status: 'pago',
+    mikrotik_user: username,
+    mikrotik_processado: true,
+    inicio_sessao: new Date().toISOString(),
   });
 
-  res.json({ sucesso: true, mensagem: 'Pagamento simulado processado' });
+  processados.add(order_nsu);
+  console.log(`✅ Acesso liberado! User: ${username} | Plano: ${plano.nome} (${plano.minutos}min)`);
+}
+
+router.post('/teste', async (req, res) => {
+  const senha = req.headers['x-admin-password'];
+  if (senha !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ erro: 'Não autorizado' });
+  }
+  const { venda_id } = req.body;
+  if (!venda_id) return res.status(400).json({ erro: 'venda_id obrigatório' });
+  await processarPagamento({ order_nsu: venda_id, amount: 0, items: [{ description: 'Teste' }] });
+  res.json({ sucesso: true, mensagem: 'Pagamento simulado' });
 });
 
 module.exports = router;
