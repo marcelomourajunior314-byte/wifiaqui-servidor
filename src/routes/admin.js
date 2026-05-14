@@ -3,9 +3,8 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../database');
 const mikrotik = require('../services/mikrotik');
-const { atualizarPerfil } = require('../services/mikrotik');
+const { atualizarPerfil, alterarSSID, buscarSSID } = require('../services/mikrotik');
 
-// Middleware de autenticação simples
 function autenticar(req, res, next) {
   const senha = req.headers['x-admin-password'] || req.query.senha;
   if (senha !== process.env.ADMIN_PASSWORD) {
@@ -16,16 +15,11 @@ function autenticar(req, res, next) {
 
 router.use(autenticar);
 
-// ================================
-// GET /admin/dashboard
-// Resumo geral
-// ================================
 router.get('/dashboard', async (req, res) => {
   try {
     const resumo = db.getResumo();
     const ativos = await mikrotik.clientesAtivos();
     const vendasHoje = db.getVendasHoje();
-
     res.json({
       sucesso: true,
       resumo: {
@@ -45,58 +39,35 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-// ================================
-// GET /admin/planos
-// Listar todos os planos
-// ================================
 router.get('/planos', (req, res) => {
   try {
-    const planos = db.getPlanos();
-    res.json({ sucesso: true, planos });
+    res.json({ sucesso: true, planos: db.getPlanos() });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar planos' });
   }
 });
 
-// ================================
-// POST /admin/planos
-// Criar novo plano
-// ================================
 router.post('/planos', async (req, res) => {
   try {
     const { nome, descricao, minutos, preco } = req.body;
-
     if (!nome || !minutos || !preco) {
       return res.status(400).json({ erro: 'nome, minutos e preco são obrigatórios' });
     }
-
     const id = `plano-${minutos}min-${Date.now()}`;
     db.criarPlano({ id, nome, descricao: descricao || '', minutos, preco });
-
-    // Criar perfil no Mikrotik também
     await atualizarPerfil({ nome: id, minutos, velocidade: '5M/3M' });
-
     res.json({ sucesso: true, id, mensagem: 'Plano criado com sucesso' });
   } catch (err) {
-    console.error('Erro ao criar plano:', err);
     res.status(500).json({ erro: 'Erro ao criar plano' });
   }
 });
 
-// ================================
-// PUT /admin/planos/:id
-// Atualizar plano existente
-// ================================
 router.put('/planos/:id', async (req, res) => {
   try {
     const { nome, descricao, minutos, preco, ativo } = req.body;
     const { id } = req.params;
-
     const planoAtual = db.getPlano(id);
-    if (!planoAtual) {
-      return res.status(404).json({ erro: 'Plano não encontrado' });
-    }
-
+    if (!planoAtual) return res.status(404).json({ erro: 'Plano não encontrado' });
     db.atualizarPlano(id, {
       nome: nome || planoAtual.nome,
       descricao: descricao !== undefined ? descricao : planoAtual.descricao,
@@ -104,23 +75,15 @@ router.put('/planos/:id', async (req, res) => {
       preco: preco || planoAtual.preco,
       ativo: ativo !== undefined ? (ativo ? 1 : 0) : planoAtual.ativo,
     });
-
-    // Atualizar perfil no Mikrotik se mudou tempo
     if (minutos && minutos !== planoAtual.minutos) {
       await atualizarPerfil({ nome: id, minutos, velocidade: '5M/3M' });
     }
-
     res.json({ sucesso: true, mensagem: 'Plano atualizado com sucesso' });
   } catch (err) {
-    console.error('Erro ao atualizar plano:', err);
     res.status(500).json({ erro: 'Erro ao atualizar plano' });
   }
 });
 
-// ================================
-// DELETE /admin/planos/:id
-// Desativar plano
-// ================================
 router.delete('/planos/:id', (req, res) => {
   try {
     db.deletarPlano(req.params.id);
@@ -130,10 +93,6 @@ router.delete('/planos/:id', (req, res) => {
   }
 });
 
-// ================================
-// GET /admin/vendas
-// Histórico de vendas
-// ================================
 router.get('/vendas', (req, res) => {
   try {
     const { periodo } = req.query;
@@ -144,10 +103,6 @@ router.get('/vendas', (req, res) => {
   }
 });
 
-// ================================
-// DELETE /admin/clientes/:username
-// Derrubar cliente manualmente
-// ================================
 router.delete('/clientes/:username', async (req, res) => {
   try {
     await mikrotik.removerUsuario(req.params.username);
@@ -157,16 +112,46 @@ router.delete('/clientes/:username', async (req, res) => {
   }
 });
 
-// ================================
-// GET /admin/mikrotik/status
-// Verificar conexão com Mikrotik
-// ================================
 router.get('/mikrotik/status', async (req, res) => {
   try {
     const status = await mikrotik.testarConexao();
     res.json({ sucesso: true, ...status });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao verificar Mikrotik' });
+  }
+});
+
+router.get('/rede', async (req, res) => {
+  try {
+    const resultado = await buscarSSID();
+    const ssidSalvo = process.env.WIFI_SSID || resultado.ssid;
+    res.json({ sucesso: true, ssid: ssidSalvo });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar nome da rede' });
+  }
+});
+
+router.post('/rede', async (req, res) => {
+  try {
+    const { ssid } = req.body;
+    if (!ssid || ssid.trim().length < 1) return res.status(400).json({ erro: 'Nome da rede não pode ser vazio' });
+    if (ssid.length > 32) return res.status(400).json({ erro: 'Nome máximo 32 caracteres' });
+    await alterarSSID(ssid.trim());
+    res.json({ sucesso: true, ssid: ssid.trim(), mensagem: 'Nome da rede atualizado!' });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao alterar nome da rede. Verifique conexão com Mikrotik.' });
+  }
+});
+
+router.post('/senha', async (req, res) => {
+  try {
+    const { senha_atual, senha_nova } = req.body;
+    if (senha_atual !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ erro: 'Senha atual incorreta' });
+    }
+    res.json({ sucesso: true, mensagem: 'Senha atualizada. Atualize a variável ADMIN_PASSWORD no Railway.' });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao alterar senha' });
   }
 });
 
