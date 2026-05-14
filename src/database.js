@@ -1,114 +1,65 @@
-const Database = require('better-sqlite3');
+const fs = require('fs');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, '../../wifiaqui.db'));
+const DB_PATH = path.join(__dirname, '../data');
+const PLANOS_FILE = path.join(DB_PATH, 'planos.json');
+const VENDAS_FILE = path.join(DB_PATH, 'vendas.json');
 
-// Habilitar WAL para melhor performance
-db.pragma('journal_mode = WAL');
+if (!fs.existsSync(DB_PATH)) fs.mkdirSync(DB_PATH, { recursive: true });
 
-// ================================
-// CRIAR TABELAS
-// ================================
-db.exec(`
-  -- Planos disponíveis
-  CREATE TABLE IF NOT EXISTS planos (
-    id TEXT PRIMARY KEY,
-    nome TEXT NOT NULL,
-    descricao TEXT,
-    minutos INTEGER NOT NULL,
-    preco INTEGER NOT NULL,
-    ativo INTEGER DEFAULT 1,
-    criado_em TEXT DEFAULT (datetime('now'))
-  );
-
-  -- Vendas/Sessões
-  CREATE TABLE IF NOT EXISTS vendas (
-    id TEXT PRIMARY KEY,
-    plano_id TEXT NOT NULL,
-    mac_cliente TEXT,
-    ip_cliente TEXT,
-    valor INTEGER NOT NULL,
-    status TEXT DEFAULT 'pendente',
-    payment_id TEXT,
-    mikrotik_user TEXT,
-    inicio_sessao TEXT,
-    fim_sessao TEXT,
-    criado_em TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (plano_id) REFERENCES planos(id)
-  );
-
-  -- Configurações do sistema
-  CREATE TABLE IF NOT EXISTS configuracoes (
-    chave TEXT PRIMARY KEY,
-    valor TEXT NOT NULL,
-    atualizado_em TEXT DEFAULT (datetime('now'))
-  );
-`);
-
-// ================================
-// PLANOS PADRÃO
-// ================================
-const planosExistentes = db.prepare('SELECT COUNT(*) as total FROM planos').get();
-if (planosExistentes.total === 0) {
-  const inserirPlano = db.prepare(`
-    INSERT INTO planos (id, nome, descricao, minutos, preco, ativo)
-    VALUES (?, ?, ?, ?, ?, 1)
-  `);
-  inserirPlano.run('plano-10min',  'Flash',    '10 minutos de acesso',  10,  200);
-  inserirPlano.run('plano-30min',  'Expresso', '30 minutos de acesso',  30,  500);
-  inserirPlano.run('plano-60min',  'Turbo',    '1 hora de acesso',      60,  800);
-  inserirPlano.run('plano-120min', 'Power',    '2 horas de acesso',     120, 1200);
+if (!fs.existsSync(PLANOS_FILE)) {
+  fs.writeFileSync(PLANOS_FILE, JSON.stringify([
+    { id: 'plano-10min',  nome: 'Flash',    descricao: '10 minutos de acesso', minutos: 10,  preco: 200,  ativo: true },
+    { id: 'plano-30min',  nome: 'Expresso', descricao: '30 minutos de acesso', minutos: 30,  preco: 500,  ativo: true },
+    { id: 'plano-60min',  nome: 'Turbo',    descricao: '1 hora de acesso',     minutos: 60,  preco: 800,  ativo: true },
+    { id: 'plano-120min', nome: 'Power',    descricao: '2 horas de acesso',    minutos: 120, preco: 1200, ativo: true },
+  ], null, 2));
 }
 
-// ================================
-// QUERIES REUTILIZÁVEIS
-// ================================
-module.exports = {
-  db,
+if (!fs.existsSync(VENDAS_FILE)) {
+  fs.writeFileSync(VENDAS_FILE, JSON.stringify([], null, 2));
+}
 
-  // Planos
-  getPlanos: () => db.prepare('SELECT * FROM planos WHERE ativo = 1 ORDER BY minutos').all(),
-  getPlano: (id) => db.prepare('SELECT * FROM planos WHERE id = ?').get(id),
-  criarPlano: (plano) => db.prepare(`
-    INSERT INTO planos (id, nome, descricao, minutos, preco)
-    VALUES (@id, @nome, @descricao, @minutos, @preco)
-  `).run(plano),
-  atualizarPlano: (id, dados) => db.prepare(`
-    UPDATE planos SET nome=@nome, descricao=@descricao, minutos=@minutos, preco=@preco, ativo=@ativo
-    WHERE id=@id
-  `).run({ ...dados, id }),
-  deletarPlano: (id) => db.prepare('UPDATE planos SET ativo = 0 WHERE id = ?').run(id),
+function lerPlanos() { return JSON.parse(fs.readFileSync(PLANOS_FILE, 'utf8')); }
+function salvarPlanos(p) { fs.writeFileSync(PLANOS_FILE, JSON.stringify(p, null, 2)); }
+function lerVendas() { return JSON.parse(fs.readFileSync(VENDAS_FILE, 'utf8')); }
+function salvarVendas(v) { fs.writeFileSync(VENDAS_FILE, JSON.stringify(v, null, 2)); }
+function agora() { return new Date().toISOString(); }
+function hoje() { return new Date().toISOString().split('T')[0]; }
+function mesAtual() { return new Date().toISOString().substring(0, 7); }
 
-  // Vendas
-  criarVenda: (venda) => db.prepare(`
-    INSERT INTO vendas (id, plano_id, mac_cliente, ip_cliente, valor, status, payment_id)
-    VALUES (@id, @plano_id, @mac_cliente, @ip_cliente, @valor, @status, @payment_id)
-  `).run(venda),
-  getVenda: (id) => db.prepare('SELECT * FROM vendas WHERE id = ?').get(id),
-  getVendaPorPayment: (payment_id) => db.prepare('SELECT * FROM vendas WHERE payment_id = ?').get(payment_id),
-  atualizarVenda: (id, dados) => db.prepare(`
-    UPDATE vendas SET status=@status, mikrotik_user=@mikrotik_user, inicio_sessao=@inicio_sessao
-    WHERE id=@id
-  `).run({ ...dados, id }),
-  getVendasHoje: () => db.prepare(`
-    SELECT v.*, p.nome as plano_nome FROM vendas v
-    JOIN planos p ON v.plano_id = p.id
-    WHERE date(v.criado_em) = date('now')
-    ORDER BY v.criado_em DESC
-  `).all(),
-  getVendasMes: () => db.prepare(`
-    SELECT v.*, p.nome as plano_nome FROM vendas v
-    JOIN planos p ON v.plano_id = p.id
-    WHERE strftime('%Y-%m', v.criado_em) = strftime('%Y-%m', 'now')
-    ORDER BY v.criado_em DESC
-  `).all(),
-  getResumo: () => db.prepare(`
-    SELECT
-      COUNT(CASE WHEN status='pago' AND date(criado_em) = date('now') THEN 1 END) as vendas_hoje,
-      SUM(CASE WHEN status='pago' AND date(criado_em) = date('now') THEN valor ELSE 0 END) as receita_hoje,
-      COUNT(CASE WHEN status='pago' AND strftime('%Y-%m', criado_em) = strftime('%Y-%m', 'now') THEN 1 END) as vendas_mes,
-      SUM(CASE WHEN status='pago' AND strftime('%Y-%m', criado_em) = strftime('%Y-%m', 'now') THEN valor ELSE 0 END) as receita_mes,
-      COUNT(CASE WHEN status='pago' THEN 1 END) as total_vendas
-    FROM vendas
-  `).get(),
-};
+function getPlanos() { return lerPlanos().filter(p => p.ativo); }
+function getPlano(id) { return lerPlanos().find(p => p.id === id) || null; }
+function criarPlano(plano) { const p = lerPlanos(); p.push({...plano, ativo: true, criado_em: agora()}); salvarPlanos(p); }
+function atualizarPlano(id, dados) { const p = lerPlanos(); const i = p.findIndex(x => x.id === id); if(i!==-1){p[i]={...p[i],...dados}; salvarPlanos(p);} }
+function deletarPlano(id) { atualizarPlano(id, {ativo: false}); }
+
+function criarVenda(venda) { const v = lerVendas(); v.push({...venda, criado_em: agora()}); salvarVendas(v); }
+function getVenda(id) { return lerVendas().find(v => v.id === id) || null; }
+function getVendaPorPayment(pid) { return lerVendas().find(v => v.payment_id === pid) || null; }
+function atualizarVenda(id, dados) { const v = lerVendas(); const i = v.findIndex(x => x.id === id); if(i!==-1){v[i]={...v[i],...dados}; salvarVendas(v);} }
+
+function getVendasHoje() {
+  const planos = lerPlanos();
+  return lerVendas().filter(v => v.criado_em?.startsWith(hoje()))
+    .map(v => ({...v, plano_nome: planos.find(p => p.id === v.plano_id)?.nome || v.plano_id}))
+    .sort((a,b) => b.criado_em.localeCompare(a.criado_em));
+}
+function getVendasMes() {
+  const planos = lerPlanos();
+  return lerVendas().filter(v => v.criado_em?.startsWith(mesAtual()))
+    .map(v => ({...v, plano_nome: planos.find(p => p.id === v.plano_id)?.nome || v.plano_id}))
+    .sort((a,b) => b.criado_em.localeCompare(a.criado_em));
+}
+function getResumo() {
+  const pagas = lerVendas().filter(v => v.status === 'pago');
+  return {
+    vendas_hoje:  pagas.filter(v => v.criado_em?.startsWith(hoje())).length,
+    receita_hoje: pagas.filter(v => v.criado_em?.startsWith(hoje())).reduce((s,v) => s+(v.valor||0), 0),
+    vendas_mes:   pagas.filter(v => v.criado_em?.startsWith(mesAtual())).length,
+    receita_mes:  pagas.filter(v => v.criado_em?.startsWith(mesAtual())).reduce((s,v) => s+(v.valor||0), 0),
+    total_vendas: pagas.length,
+  };
+}
+
+module.exports = { getPlanos, getPlano, criarPlano, atualizarPlano, deletarPlano, criarVenda, getVenda, getVendaPorPayment, atualizarVenda, getVendasHoje, getVendasMes, getResumo };
