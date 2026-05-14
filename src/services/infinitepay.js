@@ -1,64 +1,37 @@
-const axios = require('axios');
+const fetch = require('node-fetch');
 
-const INFINITEPAY_URL = 'https://api.checkout.infinitepay.io/links';
+const HANDLE = process.env.INFINITEPAY_HANDLE || 'aurumwood';
+const RAILWAY_URL = process.env.SERVER_URL || 'https://wifiaqui-servidor-production.up.railway.app';
+const PORTAL_URL = process.env.PORTAL_URL || 'https://wifiaqui-servidor-production.up.railway.app';
 
-// ================================
-// GERAR LINK DE PAGAMENTO
-// ================================
-async function gerarLinkPagamento({ vendaId, plano, valor, urlRetorno, urlWebhook }) {
-  try {
-    const response = await axios.post(
-      INFINITEPAY_URL,
-      {
-        handle: process.env.INFINITEPAY_HANDLE,
-        redirect_url: urlRetorno,
-        webhook_url: urlWebhook,
-        order_nsu: vendaId,
-        items: [
-          {
-            quantity: 1,
-            price: valor,
-            description: `WiFi Aqui — ${plano.nome} (${plano.minutos} minutos)`,
-          },
-        ],
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.INFINITEPAY_TOKEN}`,
-        },
-      }
-    );
+async function gerarLinkPagamento({ vendaId, plano, valor, ipCliente, macCliente }) {
+  const cents = Math.round(valor);
+  const payload = {
+    handle: HANDLE,
+    redirect_url: `${PORTAL_URL}/portal/sucesso?venda=${vendaId}`,
+    webhook_url: `${RAILWAY_URL}/webhook/infinitepay`,
+    order_nsu: vendaId,
+    items: [{
+      quantity: 1,
+      price: cents,
+      description: `WiFi Aqui | Plano: ${plano.nome} (${plano.minutos}min) | IP: ${ipCliente || ''} | MAC: ${macCliente || ''}`
+    }]
+  };
 
-    console.log(`✅ Link gerado InfinitePay: ${response.data.url}`);
-    return {
-      sucesso: true,
-      url: response.data.url,
-      paymentId: response.data.invoice_slug || vendaId,
-    };
-  } catch (err) {
-    console.error('❌ Erro ao gerar link InfinitePay:', err.response?.data || err.message);
+  const r = await fetch('https://api.checkout.infinitepay.io/links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await r.json();
+  if (!r.ok || !data.url) {
+    console.error('❌ InfinitePay erro:', data);
     throw new Error('Erro ao gerar link de pagamento');
   }
+
+  console.log(`✅ Link gerado: ${data.url}`);
+  return { sucesso: true, url: data.url, paymentId: vendaId };
 }
 
-// ================================
-// VERIFICAR WEBHOOK
-// Valida assinatura do webhook da InfinitePay
-// ================================
-function verificarWebhook(payload, signature) {
-  const crypto = require('crypto');
-  const secret = process.env.WEBHOOK_SECRET;
-
-  const hmac = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(payload))
-    .digest('hex');
-
-  return hmac === signature;
-}
-
-module.exports = {
-  gerarLinkPagamento,
-  verificarWebhook,
-};
+module.exports = { gerarLinkPagamento };
