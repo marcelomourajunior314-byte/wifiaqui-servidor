@@ -31,9 +31,39 @@ const MIKROTIK_CONFIG = {
   timeout:  10,
 };
 
-// Cache em memória para vendas
+// Cache em memória + Gist para persistência de vendas
 let vendasCache = [];
 const processados = new Set();
+
+async function lerVendas() {
+  try {
+    const headers = { 'Accept': 'application/vnd.github.v3+json' };
+    if (GITHUB_TOKEN) headers['Authorization'] = `token ${GITHUB_TOKEN}`;
+    const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
+    if (!r.ok) return vendasCache;
+    const data = await r.json();
+    const raw = data.files?.['vendas.json']?.content;
+    if (raw) vendasCache = JSON.parse(raw);
+    return vendasCache;
+  } catch (e) { console.error('lerVendas:', e.message); return vendasCache; }
+}
+
+async function salvarVendas() {
+  try {
+    if (!GITHUB_TOKEN) return false;
+    // Salva apenas últimas 500 vendas para não estourar o Gist
+    const ultimas = vendasCache.slice(-500);
+    const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'vendas.json': { content: JSON.stringify(ultimas, null, 2) } } })
+    });
+    return r.ok;
+  } catch (e) { console.error('salvarVendas:', e.message); return false; }
+}
+
+// Carrega vendas do Gist ao iniciar
+lerVendas().then(v => console.log(`📦 Vendas carregadas: ${v.length}`));
 
 // ================================
 // GIST — Persistência de planos
@@ -218,7 +248,7 @@ app.post('/portal/iniciar-pagamento', async (req, res) => {
     if (!plano) return res.status(400).json({ sucesso: false, erro: 'Plano não encontrado' });
 
     const vendaId = uuidv4();
-    vendasCache.push({
+    const novaVenda = {
       id: vendaId, plano_id: plano.id,
       mac_cliente: mac_cliente || null,
       ip_cliente: ip_cliente || req.ip,
@@ -226,7 +256,8 @@ app.post('/portal/iniciar-pagamento', async (req, res) => {
       cliente_celular: cliente_celular || null,
       valor: plano.preco, status: 'pendente',
       payment_id: vendaId, criado_em: agora(),
-    });
+    };
+    vendasCache.push(novaVenda);
 
     const cents = Math.round(plano.preco);
     const payload = {
@@ -321,6 +352,7 @@ app.post('/webhook/infinitepay', async (req, res) => {
       vendasCache[i] = { ...vendasCache[i], status: 'pago', mikrotik_user: username, inicio_sessao: agora() };
     }
     processados.add(order_nsu);
+    await salvarVendas();
     const valor = (venda.valor / 100).toFixed(2);
     const msg = [
       '💳 NOVA VENDA — WiFi Aqui!',
