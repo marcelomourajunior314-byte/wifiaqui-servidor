@@ -502,6 +502,14 @@ async function verificarPagamento() {
     if (data.sucesso && data.pago) {
       clearInterval(pollingInterval);
       clearInterval(pixTimerInterval);
+      // Usa minutos reais do servidor
+      if (data.plano_minutos) {
+        selectedPlanData = {
+          minutos: data.plano_minutos,
+          nome: data.plano_nome || '',
+          preco: 0,
+        };
+      }
       showSuccess();
     }
   } catch (e) {
@@ -548,8 +556,7 @@ function checkRetorno() {
   const venda = params.get('venda');
   if (venda) {
     vendaId = venda;
-    // Mostra tela de aguardo e faz polling
-    selectedPlanData = { minutos: 60, preco: 0, nome: '' }; // placeholder
+    selectedPlanData = { minutos: 60, preco: 0, nome: '' }; // será atualizado pelo polling
     document.getElementById('mainScreen').style.display = 'none';
     document.getElementById('pixScreen').classList.add('active');
     document.getElementById('pixAmount').textContent = '';
