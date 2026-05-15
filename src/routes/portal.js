@@ -9,7 +9,8 @@ const { gerarLinkPagamento } = require('../services/infinitepay');
 // HTML mínimo para o Mikrotik — redirect instantâneo
 // ================================
 router.get('/hotspot', (req, res) => {
-  res.send('<html><head><meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal"></head><body>Redirecionando...</body></html>');
+  res.setHeader('Content-Type', 'text/html');
+  res.status(200).end('<html><head><meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal"></head><body>Redirecionando...</body></html>');
 });
 
 // ================================
