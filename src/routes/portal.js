@@ -5,12 +5,12 @@ const db = require('../database');
 const { gerarLinkPagamento } = require('../services/infinitepay');
 
 // ================================
-// GET /portal/hotspot
+// GET /portal/mikrotik-login
 // HTML mínimo para o Mikrotik — redirect instantâneo
 // ================================
-router.get('/hotspot', (req, res) => {
+router.get('/mikrotik-login', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
-  res.status(200).end('<html><head><meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal"></head><body>Redirecionando...</body></html>');
+  res.status(200).end('<html><head><meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal"></head><body>ok</body></html>');
 });
 
 // ================================
