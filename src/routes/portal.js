@@ -6,27 +6,12 @@ const { gerarLinkPagamento } = require('../services/infinitepay');
 
 // ================================
 // GET /portal/mikrotik-login
-// Arquivo estático servido pelo Railway para o Mikrotik fazer fetch
-// Retorna HTML com redirect para o portal
+// HTML mínimo para o Mikrotik
 // ================================
 router.get('/mikrotik-login', (req, res) => {
-  const html = [
-    '<html>',
-    '<head>',
-    '<meta charset="UTF-8">',
-    '<meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal">',
-    '<script>window.location.replace("https://wifiaqui-servidor-production.up.railway.app/portal");</script>',
-    '</head>',
-    '<body><p>Redirecionando...</p></body>',
-    '</html>'
-  ].join('\n');
-  res.writeHead(200, {
-    'Content-Type': 'text/html',
-    'Content-Length': Buffer.byteLength(html),
-    'Cache-Control': 'no-cache',
-    'Transfer-Encoding': 'identity',
-  });
-  res.end(html);
+  res.set('Content-Type', 'text/html');
+  res.set('Cache-Control', 'no-cache');
+  return res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal"><script>window.location.replace("https://wifiaqui-servidor-production.up.railway.app/portal");</script></head><body>ok</body></html>');
 });
 
 // ================================
