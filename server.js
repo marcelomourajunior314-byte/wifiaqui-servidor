@@ -251,10 +251,20 @@ app.post('/portal/iniciar-pagamento', async (req, res) => {
   }
 });
 
-app.get('/portal/status/:vendaId', (req, res) => {
+app.get('/portal/status/:vendaId', async (req, res) => {
   const venda = vendasCache.find(v => v.id === req.params.vendaId);
   if (!venda) return res.status(404).json({ sucesso: false, erro: 'Venda não encontrada' });
-  res.json({ sucesso: true, status: venda.status, pago: venda.status === 'pago', plano_id: venda.plano_id, inicio_sessao: venda.inicio_sessao });
+  const planos = await lerPlanos();
+  const plano = planos.find(p => p.id === venda.plano_id);
+  res.json({
+    sucesso: true,
+    status: venda.status,
+    pago: venda.status === 'pago',
+    plano_id: venda.plano_id,
+    plano_minutos: plano?.minutos || 60,
+    plano_nome: plano?.nome || '',
+    inicio_sessao: venda.inicio_sessao,
+  });
 });
 
 // ================================
