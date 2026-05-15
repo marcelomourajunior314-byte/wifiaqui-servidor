@@ -212,7 +212,7 @@ app.get('/portal/planos', async (req, res) => {
 
 app.post('/portal/iniciar-pagamento', async (req, res) => {
   try {
-    const { plano_id, mac_cliente, ip_cliente } = req.body;
+    const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = req.body;
     const planos = await lerPlanos();
     const plano = planos.find(p => p.id === plano_id);
     if (!plano) return res.status(400).json({ sucesso: false, erro: 'Plano não encontrado' });
@@ -222,6 +222,8 @@ app.post('/portal/iniciar-pagamento', async (req, res) => {
       id: vendaId, plano_id: plano.id,
       mac_cliente: mac_cliente || null,
       ip_cliente: ip_cliente || req.ip,
+      cliente_nome: cliente_nome || null,
+      cliente_celular: cliente_celular || null,
       valor: plano.preco, status: 'pendente',
       payment_id: vendaId, criado_em: agora(),
     });
@@ -232,6 +234,12 @@ app.post('/portal/iniciar-pagamento', async (req, res) => {
       redirect_url: `${SERVER_URL}/portal/sucesso?venda=${vendaId}`,
       webhook_url: `${SERVER_URL}/webhook/infinitepay`,
       order_nsu: vendaId,
+      ...(cliente_nome && {
+        customer: {
+          name: cliente_nome,
+          ...(cliente_celular && { phone_number: cliente_celular }),
+        }
+      }),
       items: [{
         quantity: 1, price: cents,
         description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip_cliente || req.ip} | MAC:${mac_cliente || ''}`,
@@ -318,9 +326,8 @@ app.post('/webhook/infinitepay', async (req, res) => {
       '💳 NOVA VENDA — WiFi Aqui!',
       `📶 Plano: ${plano.nome} (${plano.minutos}min)`,
       `💰 Valor: R$${valor}`,
-      nomeCliente  ? `👤 Nome: ${nomeCliente}`  : '',
-      emailCliente ? `📧 Email: ${emailCliente}` : '',
-      foneCliente  ? `📱 Fone: ${foneCliente}`   : '',
+      venda.cliente_nome    ? `👤 Nome: ${venda.cliente_nome}`       : '',
+      venda.cliente_celular ? `📱 Celular: ${venda.cliente_celular}` : '',
       `🔌 MAC: ${venda.mac_cliente || 'N/A'}`,
       `🌐 IP: ${venda.ip_cliente || 'N/A'}`,
     ].filter(Boolean).join('\n');
