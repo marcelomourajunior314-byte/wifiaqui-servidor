@@ -265,12 +265,18 @@ app.post('/portal/iniciar-pagamento', async (req, res) => {
       redirect_url: `${SERVER_URL}/portal/sucesso?venda=${vendaId}`,
       webhook_url: `${SERVER_URL}/webhook/infinitepay`,
       order_nsu: vendaId,
-      ...(cliente_nome && {
-        customer: {
-          name: cliente_nome,
-          ...(cliente_celular && { phone_number: cliente_celular }),
-        }
-      }),
+      customer: {
+        name: cliente_nome || 'Cliente WiFi',
+        email: 'cliente@wifiaqui.com',
+        phone_number: cliente_celular || '47900000000',
+      },
+      billing_address: {
+        line1: 'Rua WiFi Aqui',
+        city: 'Joinville',
+        state: 'SC',
+        postal_code: '89000000',
+        country: 'BR',
+      },
       items: [{
         quantity: 1, price: cents,
         description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip_cliente || req.ip} | MAC:${mac_cliente || ''}`,
