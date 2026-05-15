@@ -27,8 +27,6 @@
     min-height: 100vh;
     overflow-x: hidden;
   }
-
-  /* Background animado */
   body::before {
     content: '';
     position: fixed;
@@ -39,8 +37,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
-  /* Grid pontilhado */
   body::after {
     content: '';
     position: fixed;
@@ -50,7 +46,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
   .container {
     position: relative;
     z-index: 1;
@@ -58,8 +53,6 @@
     margin: 0 auto;
     padding: 24px 16px 40px;
   }
-
-  /* Header */
   .header {
     text-align: center;
     padding: 32px 0 24px;
@@ -87,14 +80,7 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .tagline {
-    color: var(--muted);
-    font-size: 14px;
-    margin-top: 6px;
-    font-weight: 300;
-  }
-
-  /* Status bar */
+  .tagline { color: var(--muted); font-size: 14px; margin-top: 6px; font-weight: 300; }
   .status-bar {
     display: flex;
     align-items: center;
@@ -108,15 +94,8 @@
     width: fit-content;
     animation: fadeDown 0.6s ease 0.1s both;
   }
-  .status-dot {
-    width: 8px; height: 8px;
-    background: var(--success);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
+  .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
   .status-text { font-size: 13px; color: var(--success); font-weight: 500; }
-
-  /* Section title */
   .section-title {
     font-family: 'Syne', sans-serif;
     font-size: 13px;
@@ -127,15 +106,7 @@
     margin-bottom: 12px;
     animation: fadeDown 0.6s ease 0.2s both;
   }
-
-  /* Planos */
-  .plans {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 28px;
-  }
-
+  .plans { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
   .plan-card {
     background: var(--surface);
     border: 1.5px solid var(--border);
@@ -154,8 +125,6 @@
   .plan-card:nth-child(2) { animation-delay: 0.3s; }
   .plan-card:nth-child(3) { animation-delay: 0.35s; }
   .plan-card:nth-child(4) { animation-delay: 0.4s; }
-  .plan-card:nth-child(5) { animation-delay: 0.45s; }
-
   .plan-card::before {
     content: '';
     position: absolute;
@@ -166,16 +135,9 @@
   }
   .plan-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-1px); }
   .plan-card:hover::before { opacity: 1; }
-  .plan-card.selected {
-    border-color: var(--accent);
-    background: rgba(0,212,255,0.05);
-    box-shadow: var(--glow);
-  }
+  .plan-card.selected { border-color: var(--accent); background: rgba(0,212,255,0.05); box-shadow: var(--glow); }
   .plan-card.selected::before { opacity: 1; }
-  .plan-card.popular {
-    border-color: rgba(124,58,237,0.4);
-  }
-
+  .plan-card.popular { border-color: rgba(124,58,237,0.4); }
   .popular-badge {
     position: absolute;
     top: -1px; right: 16px;
@@ -188,110 +150,25 @@
     padding: 4px 12px;
     border-radius: 0 0 8px 8px;
   }
-
-  .plan-icon {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-    background: var(--surface2);
-  }
-
+  .plan-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; background: var(--surface2); }
   .plan-info { flex: 1; }
-  .plan-name {
-    font-family: 'Syne', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 2px;
-  }
+  .plan-name { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 2px; }
   .plan-desc { font-size: 12px; color: var(--muted); }
-
-  .plan-price {
-    text-align: right;
-    flex-shrink: 0;
-  }
-  .price-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--accent);
-  }
+  .plan-price { text-align: right; flex-shrink: 0; }
+  .price-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
   .price-label { font-size: 11px; color: var(--muted); }
-
-  .plan-check {
-    width: 22px; height: 22px;
-    border: 2px solid var(--border);
-    border-radius: 50%;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-  .plan-card.selected .plan-check {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-  .plan-card.selected .plan-check::after {
-    content: '';
-    width: 6px; height: 10px;
-    border: 2px solid #000;
-    border-top: none;
-    border-left: none;
-    transform: rotate(45deg) translateY(-1px);
-    display: block;
-  }
-
-  /* Resumo do pedido */
-  .order-summary {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    animation: fadeUp 0.5s ease 0.5s both;
-  }
-  .summary-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
-  .summary-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    margin-bottom: 8px;
-  }
+  .plan-check { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .plan-card.selected .plan-check { background: var(--accent); border-color: var(--accent); }
+  .plan-card.selected .plan-check::after { content: ''; width: 6px; height: 10px; border: 2px solid #000; border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); display: block; }
+  .order-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; animation: fadeUp 0.5s ease 0.5s both; }
+  .summary-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px; }
   .summary-row:last-child { margin-bottom: 0; }
   .summary-label { color: var(--muted); }
   .summary-value { font-weight: 500; }
-  .summary-divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 12px 0;
-  }
-  .summary-total .summary-label {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    color: var(--text);
-    font-size: 15px;
-  }
-  .summary-total .summary-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--accent);
-  }
-
-  /* Botão de pagar */
+  .summary-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .summary-total .summary-label { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--text); font-size: 15px; }
+  .summary-total .summary-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
   .btn-pay {
     width: 100%;
     padding: 18px;
@@ -312,233 +189,42 @@
   .btn-pay:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,212,255,0.4); }
   .btn-pay:active { transform: translateY(0); }
   .btn-pay:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .btn-pay .btn-inner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-  }
-
-  /* Métodos de pagamento */
-  .payment-methods {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 14px;
-    animation: fadeUp 0.5s ease 0.6s both;
-  }
-  .pay-badge {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* Footer */
-  .footer {
-    text-align: center;
-    margin-top: 32px;
-    color: var(--muted);
-    font-size: 12px;
-    animation: fadeUp 0.5s ease 0.65s both;
-  }
-
-  /* TELA DE PAGAMENTO PIX */
-  .pix-screen {
-    display: none;
-    animation: fadeDown 0.4s ease both;
-  }
+  .btn-pay .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .payment-methods { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; animation: fadeUp 0.5s ease 0.6s both; }
+  .pay-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 500; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .footer { text-align: center; margin-top: 32px; color: var(--muted); font-size: 12px; animation: fadeUp 0.5s ease 0.65s both; }
+  .pix-screen { display: none; animation: fadeDown 0.4s ease both; }
   .pix-screen.active { display: block; }
-
-  .back-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    cursor: pointer;
-    padding: 8px 0;
-    margin-bottom: 20px;
-    transition: color 0.2s;
-  }
+  .back-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; padding: 8px 0; margin-bottom: 20px; transition: color 0.2s; }
   .back-btn:hover { color: var(--text); }
-
-  .pix-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 28px 24px;
-    text-align: center;
-    margin-bottom: 16px;
-  }
-  .pix-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
+  .pix-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; text-align: center; margin-bottom: 16px; }
+  .pix-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
   .pix-subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
-
-  .qr-placeholder {
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 20px;
-    background: white;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
+  .qr-placeholder { width: 200px; height: 200px; margin: 0 auto 20px; background: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
   .qr-placeholder svg { width: 160px; height: 160px; }
-  .qr-loading {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .spinner {
-    width: 32px; height: 32px;
-    border: 3px solid #e2e8f0;
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  .pix-amount {
-    font-family: 'Syne', sans-serif;
-    font-size: 32px;
-    font-weight: 800;
-    color: var(--accent);
-    margin-bottom: 4px;
-  }
+  .qr-loading { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .pix-amount { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
   .pix-plan { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
-
-  .copy-btn {
-    width: 100%;
-    padding: 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-    margin-bottom: 10px;
-  }
+  .copy-btn { width: 100%; padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-bottom: 10px; }
   .copy-btn:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
-
-  .timer-bar {
-    background: var(--surface2);
-    border-radius: 100px;
-    height: 6px;
-    margin: 16px 0 8px;
-    overflow: hidden;
-  }
-  .timer-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 100px;
-    transition: width 1s linear;
-  }
+  .timer-bar { background: var(--surface2); border-radius: 100px; height: 6px; margin: 16px 0 8px; overflow: hidden; }
+  .timer-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 1s linear; }
   .timer-text { font-size: 12px; color: var(--muted); text-align: center; }
-
-  .waiting-badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background: rgba(245,158,11,0.1);
-    border: 1px solid rgba(245,158,11,0.2);
-    border-radius: 100px;
-    padding: 10px 20px;
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--warning);
-  }
-
-  /* TELA DE SUCESSO */
-  .success-screen {
-    display: none;
-    text-align: center;
-    padding: 40px 0;
-    animation: scaleIn 0.4s ease both;
-  }
+  .waiting-badge { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); border-radius: 100px; padding: 10px 20px; margin-top: 12px; font-size: 13px; color: var(--warning); }
+  .success-screen { display: none; text-align: center; padding: 40px 0; animation: scaleIn 0.4s ease both; }
   .success-screen.active { display: block; }
-
-  .success-icon {
-    width: 80px; height: 80px;
-    background: linear-gradient(135deg, var(--success), #059669);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-    box-shadow: 0 8px 32px rgba(16,185,129,0.4);
-  }
-  .success-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 26px;
-    font-weight: 800;
-    margin-bottom: 8px;
-  }
+  .success-icon { width: 80px; height: 80px; background: linear-gradient(135deg, var(--success), #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 8px 32px rgba(16,185,129,0.4); }
+  .success-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 8px; }
   .success-sub { color: var(--muted); font-size: 15px; margin-bottom: 28px; }
-
-  .access-info {
-    background: var(--surface);
-    border: 1px solid rgba(16,185,129,0.2);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 20px;
-  }
-  .access-timer {
-    font-family: 'Syne', sans-serif;
-    font-size: 42px;
-    font-weight: 800;
-    color: var(--success);
-    letter-spacing: -1px;
-  }
+  .access-info { background: var(--surface); border: 1px solid rgba(16,185,129,0.2); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+  .access-timer { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; color: var(--success); letter-spacing: -1px; }
   .access-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
-
-  /* Animações */
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(0.85); }
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.85); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -564,58 +250,7 @@
     <div class="section-title">Escolha seu plano</div>
 
     <div class="plans" id="plansContainer">
-      <div class="plan-card" data-plan="10min" data-price="200" data-label="10 minutos" onclick="selectPlan(this)">
-        <div class="plan-icon">⚡</div>
-        <div class="plan-info">
-          <div class="plan-name">Flash</div>
-          <div class="plan-desc">10 minutos de acesso</div>
-        </div>
-        <div class="plan-price">
-          <div class="price-value">R$2</div>
-          <div class="price-label">por uso</div>
-        </div>
-        <div class="plan-check"></div>
-      </div>
-
-      <div class="plan-card" data-plan="30min" data-price="500" data-label="30 minutos" onclick="selectPlan(this)">
-        <div class="plan-icon">☕</div>
-        <div class="plan-info">
-          <div class="plan-name">Expresso</div>
-          <div class="plan-desc">30 minutos de acesso</div>
-        </div>
-        <div class="plan-price">
-          <div class="price-value">R$5</div>
-          <div class="price-label">por uso</div>
-        </div>
-        <div class="plan-check"></div>
-      </div>
-
-      <div class="plan-card popular" data-plan="60min" data-price="800" data-label="1 hora" onclick="selectPlan(this)">
-        <div class="popular-badge">⭐ Popular</div>
-        <div class="plan-icon">🚀</div>
-        <div class="plan-info">
-          <div class="plan-name">Turbo</div>
-          <div class="plan-desc">1 hora de acesso</div>
-        </div>
-        <div class="plan-price">
-          <div class="price-value">R$8</div>
-          <div class="price-label">por uso</div>
-        </div>
-        <div class="plan-check"></div>
-      </div>
-
-      <div class="plan-card" data-plan="120min" data-price="1200" data-label="2 horas" onclick="selectPlan(this)">
-        <div class="plan-icon">💪</div>
-        <div class="plan-info">
-          <div class="plan-name">Power</div>
-          <div class="plan-desc">2 horas de acesso</div>
-        </div>
-        <div class="plan-price">
-          <div class="price-value">R$12</div>
-          <div class="price-label">por uso</div>
-        </div>
-        <div class="plan-check"></div>
-      </div>
+      <!-- Planos carregados dinamicamente -->
     </div>
 
     <div class="order-summary" id="orderSummary" style="display:none">
@@ -635,12 +270,9 @@
       </div>
     </div>
 
-    <button class="btn-pay" id="btnPay" disabled onclick="goToPix()">
+    <button class="btn-pay" id="btnPay" disabled onclick="iniciarPagamento()">
       <div class="btn-inner">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-          <path d="M12 6v6l4 2"/>
-        </svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         Pagar agora
       </div>
     </button>
@@ -663,7 +295,7 @@
     </div>
   </div>
 
-  <!-- TELA PIX -->
+  <!-- TELA PIX (aguardando pagamento externo) -->
   <div id="pixScreen" class="pix-screen">
     <button class="back-btn" onclick="goBack()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -671,54 +303,20 @@
     </button>
 
     <div class="pix-card">
-      <div class="pix-title">Pagar com PIX</div>
-      <div class="pix-subtitle">Escaneie o QR Code ou copie o código</div>
-
-      <div class="qr-placeholder" id="qrBox">
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <rect x="10" y="10" width="30" height="30" fill="none" stroke="#000" stroke-width="3"/>
-          <rect x="15" y="15" width="20" height="20" fill="#000"/>
-          <rect x="60" y="10" width="30" height="30" fill="none" stroke="#000" stroke-width="3"/>
-          <rect x="65" y="15" width="20" height="20" fill="#000"/>
-          <rect x="10" y="60" width="30" height="30" fill="none" stroke="#000" stroke-width="3"/>
-          <rect x="15" y="65" width="20" height="20" fill="#000"/>
-          <rect x="60" y="55" width="8" height="8" fill="#000"/>
-          <rect x="72" y="55" width="8" height="8" fill="#000"/>
-          <rect x="84" y="55" width="8" height="8" fill="#000"/>
-          <rect x="60" y="67" width="8" height="8" fill="#000"/>
-          <rect x="72" y="67" width="8" height="8" fill="#000"/>
-          <rect x="60" y="79" width="8" height="8" fill="#000"/>
-          <rect x="72" y="79" width="8" height="8" fill="#000"/>
-          <rect x="84" y="79" width="8" height="8" fill="#000"/>
-          <rect x="45" y="10" width="6" height="6" fill="#000"/>
-          <rect x="45" y="20" width="6" height="6" fill="#000"/>
-          <rect x="45" y="30" width="6" height="6" fill="#000"/>
-          <rect x="45" y="45" width="6" height="6" fill="#000"/>
-          <rect x="10" y="45" width="6" height="6" fill="#000"/>
-          <rect x="20" y="45" width="6" height="6" fill="#000"/>
-          <rect x="30" y="45" width="6" height="6" fill="#000"/>
-        </svg>
-        <div class="qr-loading" id="qrLoading">
-          <div class="spinner"></div>
-        </div>
-      </div>
+      <div class="pix-title">Aguardando Pagamento</div>
+      <div class="pix-subtitle">Complete o pagamento na janela que foi aberta</div>
 
       <div class="pix-amount" id="pixAmount">R$0,00</div>
       <div class="pix-plan" id="pixPlan">—</div>
 
-      <button class="copy-btn" onclick="copyPix()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        <span id="copyBtnText">Copiar código PIX</span>
-      </button>
-
       <div class="timer-bar">
         <div class="timer-fill" id="timerFill" style="width:100%"></div>
       </div>
-      <div class="timer-text" id="timerText">Aguardando pagamento...</div>
+      <div class="timer-text" id="timerText">Verificando pagamento...</div>
 
       <div class="waiting-badge">
         <div class="status-dot" style="background:var(--warning)"></div>
-        Aguardando confirmação do PIX
+        <span id="waitingText">Aguardando confirmação do pagamento</span>
       </div>
     </div>
   </div>
@@ -746,91 +344,178 @@
 </div>
 
 <script>
-let selectedPlan = null;
-let countdownInterval = null;
-let pixTimer = null;
+const SERVER = '';  // mesmo domínio
+let selectedPlanId = null;
+let selectedPlanData = null;
+let vendaId = null;
+let pollingInterval = null;
+let pixTimerInterval = null;
 let pixSeconds = 300;
+let countdownInterval = null;
 
-const plans = {
-  '10min':  { name: 'Flash',    duration: '10 minutos', minutes: 10,  price: 200,  label: 'R$2,00' },
-  '30min':  { name: 'Expresso', duration: '30 minutos', minutes: 30,  price: 500,  label: 'R$5,00' },
-  '60min':  { name: 'Turbo',    duration: '1 hora',     minutes: 60,  price: 800,  label: 'R$8,00' },
-  '120min': { name: 'Power',    duration: '2 horas',    minutes: 120, price: 1200, label: 'R$12,00' },
-};
+// Carregar planos do servidor
+async function carregarPlanos() {
+  try {
+    const r = await fetch(SERVER + '/portal/planos');
+    const data = await r.json();
+    if (data.sucesso && data.planos) {
+      renderPlanos(data.planos);
+    }
+  } catch (e) {
+    console.error('Erro ao carregar planos:', e);
+  }
+}
+
+function renderPlanos(planos) {
+  const container = document.getElementById('plansContainer');
+  const icones = ['⚡','☕','🚀','💪','🌟'];
+  container.innerHTML = planos.map((p, i) => `
+    <div class="plan-card ${p.popular ? 'popular' : ''}"
+         data-id="${p.id}"
+         data-nome="${p.nome}"
+         data-minutos="${p.minutos}"
+         data-preco="${p.preco}"
+         onclick="selectPlan(this)">
+      ${p.popular ? '<div class="popular-badge">⭐ Popular</div>' : ''}
+      <div class="plan-icon">${icones[i] || '📶'}</div>
+      <div class="plan-info">
+        <div class="plan-name">${p.nome}</div>
+        <div class="plan-desc">${p.minutos >= 60 ? (p.minutos/60) + ' hora' + (p.minutos>60?'s':'') : p.minutos + ' minutos'} de acesso</div>
+      </div>
+      <div class="plan-price">
+        <div class="price-value">R$${(p.preco/100).toFixed(0)}</div>
+        <div class="price-label">por uso</div>
+      </div>
+      <div class="plan-check"></div>
+    </div>
+  `).join('');
+}
 
 function selectPlan(el) {
   document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
-  selectedPlan = el.dataset.plan;
+  selectedPlanId = el.dataset.id;
+  selectedPlanData = {
+    nome: el.dataset.nome,
+    minutos: parseInt(el.dataset.minutos),
+    preco: parseInt(el.dataset.preco),
+  };
 
-  const p = plans[selectedPlan];
-  document.getElementById('summaryPlan').textContent = p.name;
-  document.getElementById('summaryDuration').textContent = p.duration;
-  document.getElementById('summaryTotal').textContent = p.label;
+  const preco = (selectedPlanData.preco / 100).toFixed(2);
+  const dur = selectedPlanData.minutos >= 60
+    ? (selectedPlanData.minutos/60) + ' hora' + (selectedPlanData.minutos > 60 ? 's' : '')
+    : selectedPlanData.minutos + ' minutos';
+
+  document.getElementById('summaryPlan').textContent = selectedPlanData.nome;
+  document.getElementById('summaryDuration').textContent = dur;
+  document.getElementById('summaryTotal').textContent = 'R$' + preco;
   document.getElementById('orderSummary').style.display = 'block';
 
   const btn = document.getElementById('btnPay');
   btn.disabled = false;
   btn.querySelector('.btn-inner').innerHTML = `
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-    Pagar ${p.label}
+    Pagar R$${preco}
   `;
 }
 
-function goToPix() {
-  if (!selectedPlan) return;
-  const p = plans[selectedPlan];
+async function iniciarPagamento() {
+  if (!selectedPlanId) return;
+  const btn = document.getElementById('btnPay');
+  btn.disabled = true;
+  btn.querySelector('.btn-inner').innerHTML = '<div class="spinner" style="border-color:#000;border-top-color:#0099cc;width:20px;height:20px"></div> Aguarde...';
 
+  try {
+    const r = await fetch(SERVER + '/portal/iniciar-pagamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plano_id: selectedPlanId })
+    });
+    const data = await r.json();
+    if (!data.sucesso) throw new Error(data.erro || 'Erro ao iniciar pagamento');
+
+    vendaId = data.venda_id;
+
+    // Abre checkout InfinitePay em nova aba
+    window.open(data.url_pagamento, '_blank');
+
+    // Mostra tela de aguardo
+    mostrarTelaAguardo();
+
+  } catch (e) {
+    console.error(e);
+    btn.disabled = false;
+    btn.querySelector('.btn-inner').innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Pagar agora
+    `;
+    alert('Erro ao iniciar pagamento. Tente novamente.');
+  }
+}
+
+function mostrarTelaAguardo() {
   document.getElementById('mainScreen').style.display = 'none';
   document.getElementById('pixScreen').classList.add('active');
 
-  document.getElementById('pixAmount').textContent = p.label;
-  document.getElementById('pixPlan').textContent = p.name + ' — ' + p.duration;
+  const preco = (selectedPlanData.preco / 100).toFixed(2);
+  const dur = selectedPlanData.minutos >= 60
+    ? (selectedPlanData.minutos/60) + ' hora' + (selectedPlanData.minutos > 60 ? 's' : '')
+    : selectedPlanData.minutos + ' minutos';
 
-  setTimeout(() => {
-    document.getElementById('qrLoading').style.display = 'none';
-  }, 1500);
+  document.getElementById('pixAmount').textContent = 'R$' + preco;
+  document.getElementById('pixPlan').textContent = selectedPlanData.nome + ' — ' + dur;
 
   pixSeconds = 300;
   startPixTimer();
-  simulatePaymentCheck();
+  startPolling();
 }
 
 function startPixTimer() {
-  pixTimer = setInterval(() => {
+  pixTimerInterval = setInterval(() => {
     pixSeconds--;
     const pct = (pixSeconds / 300) * 100;
     document.getElementById('timerFill').style.width = pct + '%';
     const m = Math.floor(pixSeconds / 60);
     const s = pixSeconds % 60;
     document.getElementById('timerText').textContent =
-      `Expira em ${m}:${s.toString().padStart(2,'0')}`;
+      `Verificando a cada 5s — ${m}:${s.toString().padStart(2,'0')}`;
     if (pixSeconds <= 0) {
-      clearInterval(pixTimer);
-      document.getElementById('timerText').textContent = 'QR Code expirado';
+      clearInterval(pixTimerInterval);
+      clearInterval(pollingInterval);
+      document.getElementById('timerText').textContent = 'Tempo expirado';
+      document.getElementById('waitingText').textContent = 'Tempo esgotado — volte e tente novamente';
     }
   }, 1000);
 }
 
-function simulatePaymentCheck() {
-  // Em produção: polling no servidor ou SSE
-  // Demo: simula pagamento após 4 segundos
-  setTimeout(() => {
-    clearInterval(pixTimer);
-    showSuccess();
-  }, 8000);
+function startPolling() {
+  // Verifica imediatamente e depois a cada 5s
+  verificarPagamento();
+  pollingInterval = setInterval(verificarPagamento, 5000);
 }
 
-function copyPix() {
-  const btn = document.getElementById('copyBtnText');
-  btn.textContent = '✓ Copiado!';
-  setTimeout(() => btn.textContent = 'Copiar código PIX', 2000);
+async function verificarPagamento() {
+  if (!vendaId) return;
+  try {
+    const r = await fetch(SERVER + '/portal/status/' + vendaId);
+    const data = await r.json();
+    if (data.sucesso && data.pago) {
+      clearInterval(pollingInterval);
+      clearInterval(pixTimerInterval);
+      showSuccess();
+    }
+  } catch (e) {
+    console.error('Erro ao verificar status:', e);
+  }
 }
 
 function goBack() {
-  clearInterval(pixTimer);
+  clearInterval(pixTimerInterval);
+  clearInterval(pollingInterval);
   document.getElementById('pixScreen').classList.remove('active');
   document.getElementById('mainScreen').style.display = 'block';
+  const btn = document.getElementById('btnPay');
+  btn.disabled = false;
 }
 
 function showSuccess() {
@@ -838,8 +523,7 @@ function showSuccess() {
   document.getElementById('mainScreen').style.display = 'none';
   document.getElementById('successScreen').classList.add('active');
 
-  const p = plans[selectedPlan];
-  let totalSeconds = p.minutes * 60;
+  let totalSeconds = selectedPlanData.minutos * 60;
   updateCountdown(totalSeconds);
   countdownInterval = setInterval(() => {
     totalSeconds--;
@@ -857,6 +541,28 @@ function updateCountdown(s) {
   document.getElementById('countdownDisplay').textContent =
     m.toString().padStart(2,'0') + ':' + sec.toString().padStart(2,'0');
 }
+
+// Verifica se voltou de pagamento com ?venda= na URL
+function checkRetorno() {
+  const params = new URLSearchParams(window.location.search);
+  const venda = params.get('venda');
+  if (venda) {
+    vendaId = venda;
+    // Mostra tela de aguardo e faz polling
+    selectedPlanData = { minutos: 60, preco: 0, nome: '' }; // placeholder
+    document.getElementById('mainScreen').style.display = 'none';
+    document.getElementById('pixScreen').classList.add('active');
+    document.getElementById('pixAmount').textContent = '';
+    document.getElementById('pixPlan').textContent = 'Verificando pagamento...';
+    pixSeconds = 60;
+    startPixTimer();
+    startPolling();
+  }
+}
+
+// Init
+carregarPlanos();
+checkRetorno();
 </script>
 </body>
 </html>
