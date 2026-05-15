@@ -20,6 +20,8 @@ const SERVER_URL        = process.env.SERVER_URL || 'https://wifiaqui-servidor-p
 const INFINITEPAY_HANDLE = process.env.INFINITEPAY_HANDLE || 'aurumwood';
 const GITHUB_TOKEN      = process.env.GITHUB_TOKEN;
 const GIST_ID           = process.env.WIFIAQUI_GIST_ID || '5b034134c5c02b347c68824569e8ccc2';
+const TG_BOT_TOKEN      = process.env.TG_BOT_TOKEN || '8826986129:AAGwKZiCU-25EhqtDDgFQxrsVfMBigFD19w';
+const TG_CHAT_ID        = process.env.TG_CHAT_ID || '8782621401';
 
 const MIKROTIK_CONFIG = {
   host:     process.env.MIKROTIK_HOST || '127.0.0.1',
@@ -66,6 +68,22 @@ async function salvarPlanos(planos) {
     console.log('Planos salvos no Gist:', r.ok);
     return r.ok;
   } catch (e) { console.error('salvarPlanos:', e.message); return false; }
+}
+
+// ================================
+// TELEGRAM
+// ================================
+async function notificarTelegram(msg) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_CHAT_ID, text: msg })
+    });
+    const data = await r.json();
+    if (data.ok) console.log("📱 Telegram enviado!");
+    else console.error("Telegram erro:", JSON.stringify(data));
+  } catch (e) { console.error("Telegram falhou:", e.message); }
 }
 
 // ================================
@@ -255,6 +273,11 @@ app.post('/webhook/infinitepay', async (req, res) => {
     const ipCliente  = ipMatch?.[1]?.trim() || null;
     const macCliente = macMatch?.[1]?.trim() || null;
 
+    // Dados do cliente preenchidos no checkout InfinitePay
+    const nomeCliente  = req.body?.customer?.name || req.body?.billing?.name || '';
+    const emailCliente = req.body?.customer?.email || req.body?.billing?.email || '';
+    const foneCliente  = req.body?.customer?.phone || req.body?.billing?.phone || '';
+
     const venda = vendasCache.find(v => v.id === order_nsu);
     if (!venda || venda.status === 'pago') return;
 
@@ -280,6 +303,18 @@ app.post('/webhook/infinitepay', async (req, res) => {
       vendasCache[i] = { ...vendasCache[i], status: 'pago', mikrotik_user: username, inicio_sessao: agora() };
     }
     processados.add(order_nsu);
+    const valor = (venda.valor / 100).toFixed(2);
+    const msg = [
+      '💳 NOVA VENDA — WiFi Aqui!',
+      `📶 Plano: ${plano.nome} (${plano.minutos}min)`,
+      `💰 Valor: R$${valor}`,
+      nomeCliente  ? `👤 Nome: ${nomeCliente}`  : '',
+      emailCliente ? `📧 Email: ${emailCliente}` : '',
+      foneCliente  ? `📱 Fone: ${foneCliente}`   : '',
+      `🔌 MAC: ${venda.mac_cliente || 'N/A'}`,
+      `🌐 IP: ${venda.ip_cliente || 'N/A'}`,
+    ].filter(Boolean).join('\n');
+    await notificarTelegram(msg);
     console.log(`✅ Acesso liberado! ${username} | ${plano.nome}`);
   } catch (err) { console.error('❌ webhook:', err); }
 });
