@@ -5,6 +5,14 @@ const db = require('../database');
 const { gerarLinkPagamento } = require('../services/infinitepay');
 
 // ================================
+// GET /portal/hotspot
+// HTML mínimo para o Mikrotik — redirect instantâneo
+// ================================
+router.get('/hotspot', (req, res) => {
+  res.send('<html><head><meta http-equiv="refresh" content="0;url=https://wifiaqui-servidor-production.up.railway.app/portal"></head><body>Redirecionando...</body></html>');
+});
+
+// ================================
 // GET /portal
 // Servir a página HTML do portal
 // ================================
@@ -33,13 +41,11 @@ router.post('/iniciar-pagamento', async (req, res) => {
   try {
     const { plano_id, mac_cliente, ip_cliente } = req.body;
 
-    // Validar plano
     const plano = db.getPlano(plano_id);
     if (!plano) {
       return res.status(400).json({ sucesso: false, erro: 'Plano não encontrado' });
     }
 
-    // Criar venda pendente
     const vendaId = uuidv4();
     db.criarVenda({
       id: vendaId,
@@ -51,7 +57,6 @@ router.post('/iniciar-pagamento', async (req, res) => {
       payment_id: vendaId,
     });
 
-    // Gerar link InfinitePay
     const serverUrl = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3000}`;
     const resultado = await gerarLinkPagamento({
       vendaId,
@@ -87,7 +92,6 @@ router.get('/status/:vendaId', (req, res) => {
     if (!venda) {
       return res.status(404).json({ sucesso: false, erro: 'Venda não encontrada' });
     }
-
     res.json({
       sucesso: true,
       status: venda.status,
@@ -105,7 +109,6 @@ router.get('/status/:vendaId', (req, res) => {
 // Página de retorno após pagamento
 // ================================
 router.get('/sucesso', (req, res) => {
-  const { venda } = req.query;
   res.sendFile('portal-cliente.html', { root: './public' });
 });
 
