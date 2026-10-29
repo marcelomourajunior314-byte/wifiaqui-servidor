@@ -351,7 +351,7 @@ export default {
       }
       // Sync / health
       if (p === '/mikrotik/sync' && m === 'POST') return sincronizar(req, env, ctx, url);
-      if (p === '/health') return json({ status: 'online', servico: 'WiFi Aqui', versao: VERSAO, gist: env.WIFIAQUI_GIST_ID, mikrotik: env.MIKROTIK_HOST || '(não configurado)', token_ok: !!env.GITHUB_TOKEN });
+      if (p === '/health') return json({ status: 'online', servico: 'WiFi Aqui', versao: VERSAO, gist: env.WIFIAQUI_GIST_ID, mikrotik: env.MIKROTIK_HOST || '(não configurado)', token_ok: !!env.GITHUB_TOKEN, checkout_api_key: !!env.INFINITEPAY_API_KEY });
       // Admin
       if (p.startsWith('/admin')) {
         const senha = req.headers.get('x-admin-password') || url.searchParams.get('senha');
