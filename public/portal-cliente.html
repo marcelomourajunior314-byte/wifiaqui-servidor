@@ -463,6 +463,7 @@ async function iniciarPagamento() {
     if (!data.sucesso) throw new Error(data.erro || 'Erro ao iniciar pagamento');
 
     vendaId = data.venda_id;
+    try { localStorage.setItem('wa_pend', JSON.stringify({ id: vendaId, t: Date.now() })); } catch (e) {}
 
     // Abre checkout InfinitePay em nova aba
     window.open(urlPagamento(data.url_pagamento), '_blank');
@@ -538,6 +539,7 @@ async function verificarPagamento() {
           preco: 0,
         };
       }
+      try { localStorage.removeItem('wa_pend'); } catch (e) {}
       showSuccess();
     }
   } catch (e) {
@@ -581,7 +583,9 @@ function updateCountdown(s) {
 // Verifica se voltou de pagamento com ?venda= na URL
 function checkRetorno() {
   const params = new URLSearchParams(window.location.search);
-  const venda = params.get('venda');
+  let venda = params.get('venda');
+  // voltou ao portal depois de copiar o código/abrir o app do banco: retoma o pagamento em andamento (até 15 min)
+  if (!venda) { try { const pd = JSON.parse(localStorage.getItem('wa_pend') || 'null'); if (pd && pd.id && Date.now() - pd.t < 15 * 60 * 1000) venda = pd.id; } catch (e) {} }
   if (venda) {
     vendaId = venda;
     selectedPlanData = { minutos: 60, preco: 0, nome: '' }; // será atualizado pelo polling

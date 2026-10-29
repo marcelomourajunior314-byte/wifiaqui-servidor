@@ -65,6 +65,7 @@ ok(/mac_cliente: clienteMac\(\), ip_cliente: clienteIp\(\)/.test(readFileSync(ra
 reset(); { const t = await (await run('GET', '/portal/mikrotik-login')).text(); ok(t.includes('$(link-login-only)') && t.includes('$(mac-esc)') && !t.includes('googleapis'), 'login.html envia MAC, IP e link de login do Mikrotik'); }
 reset(); ok((await (await run('GET', '/portal/planos')).json()).planos.length === 1, 'planos vêm do Gist');
 reset(); let id = await novaVenda(); ok(vendas()[0]?.status === 'pendente', 'venda pendente salva no Gist');
+{ const lk = calls.find(c => c[1].includes('checkout.infinitepay.io/links')); const pl = lk ? JSON.parse(lk[2]) : {}; ok(pl.address?.cep && pl.address?.street && !pl.billing_address, 'checkout recebe o endereço pré-preenchido (campo address)'); }
 await new Promise(r => setTimeout(r, 4100)); await run('POST', '/webhook/infinitepay', hook(id));
 ok(vendas()[0].status === 'pago' && tg()[0]?.includes('NOVA VENDA'), 'pagamento confirmado libera venda e avisa');
 ok(log.some(w => w[0] === '/ip/hotspot/user/add') && log.some(w => w[0] === '/ip/hotspot/active/login'), 'Mikrotik: cria usuário e loga o cliente');

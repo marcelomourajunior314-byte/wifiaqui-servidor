@@ -323,10 +323,12 @@ export default {
         const payload = {
           handle: env.INFINITEPAY_HANDLE, redirect_url: `${url.origin}/portal/sucesso?venda=${vendaId}`, webhook_url: `${url.origin}/webhook/infinitepay`, order_nsu: vendaId,
           customer: { name: cliente_nome || 'Cliente WiFi', email: 'cliente@wifiaqui.com', phone_number: cliente_celular || '47900000000' },
-          billing_address: { line1: 'Rua WiFi Aqui', city: 'Joinville', state: 'SC', postal_code: '89000000', country: 'BR' },
+          // endereço pré-preenchido (serviço digital, sem entrega); com INFINITEPAY_API_KEY o checkout nem pede endereço
+          address: { cep: '01310100', street: 'Avenida Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo', state: 'SP', complement: '' },
+          ...(env.INFINITEPAY_API_KEY ? { options: { require_delivery_address: false } } : {}),
           items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''}` }],
         };
-        const r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) });
         const d = await r.json().catch(() => ({}));
         if (!r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento' }, 500); }
         const vendas = await lerVendas(env, true);
