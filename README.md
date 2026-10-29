@@ -41,3 +41,11 @@ Todas as rotas precisam do header `x-admin-password`
 - `GET /admin/vendas` — Histórico
 - `DELETE /admin/clientes/:username` — Derruba cliente
 - `GET /admin/mikrotik/status` — Status Mikrotik
+
+## Cloudflare Workers (substitui a Railway) – pasta `cloudflare/`
+
+Mesmas rotas; o portal (`public/portal-cliente.html`) é servido pelo próprio Worker.
+1. Cloudflare → Workers & Pages → Create → **Import a repository** → `wifiaqui-servidor`
+2. **Root directory:** `cloudflare` · Deploy command: `npx wrangler deploy`
+3. Secrets: `GITHUB_TOKEN`, `TG_BOT_TOKEN`, `ADMIN_PASSWORD`, `MIKROTIK_PASSWORD`
+4. Variável: `MIKROTIK_HOST` (IP público/DDNS do Mikrotik, porta 8728 liberada)

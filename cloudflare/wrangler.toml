@@ -1,0 +1,27 @@
+# WiFi Aqui – servidor no Cloudflare Workers (substitui a Railway)
+# Deploy automático: Cloudflare > Workers & Pages > Import a repository
+#   Repositório: wifiaqui-servidor | Pasta raiz (Root directory): cloudflare
+# Segredos (Settings > Variables and Secrets, tipo "Secret"):
+#   GITHUB_TOKEN, TG_BOT_TOKEN, ADMIN_PASSWORD, MIKROTIK_PASSWORD
+# Variável (tipo "Text"): MIKROTIK_HOST = IP público ou DDNS do Mikrotik
+name = "wifiaqui-api"
+main = "src/worker.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+keep_vars = true   # não apaga variáveis criadas no painel do Cloudflare
+
+# Portal do cliente (public/portal-cliente.html) servido pelo próprio Worker
+[assets]
+directory = "../public"
+binding = "ASSETS"
+html_handling = "none"
+
+[vars]
+WIFIAQUI_GIST_ID   = "5b034134c5c02b347c68824569e8ccc2"
+TG_CHAT_ID         = "8782621401"
+INFINITEPAY_HANDLE = "aurumwood"
+MIKROTIK_PORT      = "8728"
+MIKROTIK_USER      = "admin"
+
+[observability]
+enabled = true
