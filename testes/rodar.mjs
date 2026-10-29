@@ -61,6 +61,8 @@ const hook = (id, extra = {}) => ({ order_nsu: id, transaction_nsu: 'T', invoice
 
 reset(); ok((await (await run('GET', '/')).text()).includes('portal-cliente'), 'GET / mostra o portal');
 ok(/mac_cliente: clienteMac\(\), ip_cliente: clienteIp\(\)/.test(readFileSync(raiz + 'public/portal-cliente.html', 'utf8')), 'portal envia MAC e IP do Mikrotik no pagamento');
+{ const h = readFileSync(raiz + 'public/portal-cliente.html', 'utf8'); ok(/window\.open\(urlPagamento\(data\.url_pagamento\)/.test(h) && h.includes("'T-'"), 'pagamento abre pelo acesso de teste do hotspot (trial)'); }
+reset(); { const t = await (await run('GET', '/portal/mikrotik-login')).text(); ok(t.includes('$(link-login-only)') && t.includes('$(mac-esc)') && !t.includes('googleapis'), 'login.html envia MAC, IP e link de login do Mikrotik'); }
 reset(); ok((await (await run('GET', '/portal/planos')).json()).planos.length === 1, 'planos vêm do Gist');
 reset(); let id = await novaVenda(); ok(vendas()[0]?.status === 'pendente', 'venda pendente salva no Gist');
 await new Promise(r => setTimeout(r, 4100)); await run('POST', '/webhook/infinitepay', hook(id));

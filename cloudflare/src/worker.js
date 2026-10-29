@@ -313,7 +313,7 @@ export default {
         return portal(req, env);
       }
       if (p === '/portal/mikrotik-login')
-        return new Response(`<html><head><meta charset="utf-8"><title>WiFi Aqui</title></head><body><script>location.replace("${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)");</script><noscript><meta http-equiv="refresh" content="0;url=${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)"></noscript></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        return new Response(`<html><head><meta charset="utf-8"><title>WiFi Aqui</title></head><body><script>location.replace("${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)&lg="+encodeURIComponent("$(link-login-only)"));</script><noscript><meta http-equiv="refresh" content="0;url=${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)"></noscript></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
       if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env)).filter(x => x.ativo) });
       if (p === '/portal/iniciar-pagamento' && m === 'POST') {
         const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = await corpo(req);

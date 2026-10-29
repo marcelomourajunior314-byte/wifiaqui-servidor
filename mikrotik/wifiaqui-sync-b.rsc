@@ -29,6 +29,8 @@
     }
     :if ($mac != "-") do={
       /ip hotspot user set [find name=$u] mac-address=$mac
+      # tira o acesso de teste (T-mac) do aparelho para o plano pago assumir
+      /ip hotspot active remove [find mac-address=$mac user~"^T-"]
       # IP atual do aparelho (pode ter mudado depois de queda de energia)
       :local lease [/ip dhcp-server lease find mac-address=$mac]
       :if ([:len $lease] > 0) do={ :set ip [/ip dhcp-server lease get [:pick $lease 0] address] }
