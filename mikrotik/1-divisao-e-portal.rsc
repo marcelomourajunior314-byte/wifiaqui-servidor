@@ -29,3 +29,8 @@
 /tool fetch url=("https://" . $servidor . "/portal/mikrotik-login") dst-path=flash/hotspot/login.html mode=https check-certificate=no
 
 :log info "WiFi Aqui: divisao justa e portal configurados"
+
+# 5) Detecção de portal cativo mais rápida: o Mikrotik responde sozinho aos endereços de teste dos celulares
+#    (o hotspot intercepta o acesso HTTP e abre o portal na hora, sem esperar o DNS da internet)
+/ip dns static remove [find comment="WiFi Aqui deteccao"]
+:foreach h in={"captive.apple.com"; "connectivitycheck.gstatic.com"; "connectivitycheck.android.com"; "clients3.google.com"; "www.msftconnecttest.com"; "detectportal.firefox.com"} do={ /ip dns static add name=$h address=192.168.50.1 comment="WiFi Aqui deteccao" }
