@@ -2,7 +2,7 @@
 
 Aplicados pelo Claude através do notebook ligado à conversa (SSH no Mikrotik). Ordem:
 
-1. Rede dos clientes pronta (ether3 192.168.0.1/24, DHCP e hotspot — AX53 em 192.168.0.2, gateway 192.168.0.1).
+1. Rede dos clientes pronta (ether3 192.168.50.1/24, DHCP e hotspot — AX53 em 192.168.50.2, gateway 192.168.50.1; não usar 192.168.0.x, que é a faixa dos modems domésticos e conflita com a ether1).
 2. `1-divisao-e-portal.rsc` — filas PCQ (divisão justa), FastTrack desligado, walled garden e login.html do portal.
 3. Criar o script `wifiaqui-sync-base` com o conteúdo de `wifiaqui-sync-base.rsc`.
 4. `2-sincronizacao.rsc` com o token real (segredo `MIKROTIK_TOKEN` do Cloudflare) — cria o script `wifiaqui-sync` e o agendador de 20s.

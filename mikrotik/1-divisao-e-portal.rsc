@@ -1,7 +1,7 @@
 # WiFi Aqui — Mikrotik: divisão justa da internet + portal no Cloudflare
 # Aplicar UMA vez (Claude aplica pelo notebook ligado à conversa).
-# Antes: trocar REDE_CLIENTES se a rede dos clientes não for 192.168.0.0/24.
-:local redeClientes "192.168.0.0/24"
+# Antes: trocar REDE_CLIENTES se a rede dos clientes não for 192.168.50.0/24.
+:local redeClientes "192.168.50.0/24"
 :local servidor "wifiaqui-api.marcelomourajunior314.workers.dev"
 
 # 1) Filas PCQ: divide igualmente entre quem está usando; o teto por pessoa é ajustado pelo servidor a cada 20s
