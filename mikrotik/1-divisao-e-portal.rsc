@@ -16,13 +16,16 @@
 
 # 3) Liberar (sem pagar) o portal e o pagamento
 /ip hotspot walled-garden
-:foreach h in={$servidor; "*.infinitepay.io"; "checkout.infinitepay.io"; "*.infinitepay.com.br"; "captive.apple.com"; "connectivitycheck.gstatic.com"; "*.cloudflare.com"} do={
+:foreach h in={$servidor; "*.infinitepay.io"; "checkout.infinitepay.io"; "*.infinitepay.com.br"; "captive.apple.com"; "connectivitycheck.gstatic.com"; "*.cloudflare.com"; "speed.cloudflare.com"} do={
   :if ([:len [find dst-host=$h]] = 0) do={ add dst-host=$h action=allow comment="WiFi Aqui" }
 }
 /ip hotspot walled-garden ip
 :if ([:len [find comment="WiFi Aqui - DNS"]] = 0) do={ add dst-port=53 protocol=udp action=accept comment="WiFi Aqui - DNS" }
 
-# 4) Página de login do hotspot → portal no Cloudflare (envia MAC e IP do cliente)
+# 4) Reconexão automática pelo MAC: quem pagou volta a navegar sozinho depois de queda de energia/internet
+/ip hotspot profile set [find] login-by=mac,http-chap,http-pap,https,cookie mac-auth-mode=mac-as-username
+
+# 5) Página de login do hotspot → portal no Cloudflare (envia MAC e IP do cliente)
 /tool fetch url=("https://" . $servidor . "/portal/mikrotik-login") dst-path=flash/hotspot/login.html mode=https check-certificate=no
 
 :log info "WiFi Aqui: divisao justa e portal configurados"

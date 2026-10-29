@@ -9,7 +9,15 @@ Aplicados pelo Claude através do notebook ligado à conversa (SSH no Mikrotik).
 
 Como funciona: a cada 20s o Mikrotik chama `POST /mikrotik/sync` e recebe:
 - `RATE <down> <up> <modo> <faixa>` → teto por pessoa nas filas PCQ (0 = sem limite)
-- `ADD <id> <usuario> <senha> <minutos> <ip> <mac>` → libera quem pagou (confirma com `ok=<id>` na próxima chamada)
+- `ADD <id> <usuario> <senha|-> <segundos> <ip|-> <mac|->` → libera quem pagou, ou devolve o tempo que faltava depois de queda (confirma com `ok=<id>`)
+- `SPEED` → mede a velocidade da Starlink (~50 MB da Cloudflare) e manda em `st=` na próxima chamada
 - `DEL <usuario>` → derruba o cliente pedido no admin
 
 O token **nunca** vai para o GitHub (repositório público).
+
+## Quedas de energia / internet
+- O usuário do hotspot é o **MAC** do aparelho e o hotspot aceita login por MAC: ao religar, o celular entra sozinho.
+- O servidor conta o tempo usado só enquanto o Mikrotik está sincronizando. Se o Mikrotik religar (uptime volta a zero)
+  ou ficar mais de 60 s sem sincronizar, o servidor manda `ADD` de novo para cada acesso com o **tempo que faltava**
+  (o Mikrotik ajusta `limit-uptime = uptime + restante`).
+- Quando o tempo acaba, o servidor manda `DEL`.

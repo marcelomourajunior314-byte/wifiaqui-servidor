@@ -4,9 +4,9 @@
 //  - Mikrotik via RouterOS API (TCP 8728) usando sockets do Cloudflare
 import { connect } from 'cloudflare:sockets';
 import { DurableObject } from 'cloudflare:workers';
-import { decidir, lerUsuarios, topConsumo, mesclarConfig, fmtRate, CONFIG_PADRAO } from './rede.js';
+import { decidir, lerUsuarios, topConsumo, mesclarConfig, fmtRate, CONFIG_PADRAO, segundosUptime, contabilizar } from './rede.js';
 
-const VERSAO = '4.0-cloudflare';
+const VERSAO = '4.1-cloudflare';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': '*' };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
 
@@ -179,8 +179,9 @@ async function processarPagamento(body, env) {
   const plano = planos.find(p => p.id === venda.plano_id);
   if (!plano) return;
 
-  const username = `wa_${Date.now()}`;
-  const password = crypto.randomUUID().slice(0, 8);
+  const macFinal = (venda.mac_cliente || macDesc || '').toUpperCase();
+  const username = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(macFinal) ? macFinal : `wa_${Date.now()}`; // por MAC: reconecta sozinho
+  const password = username === macFinal ? '' : crypto.randomUUID().slice(0, 8);
   // Liberação: se o Mikrotik estiver acessível direto (MIKROTIK_HOST), libera na hora;
   // senão (Starlink/4G), o próprio Mikrotik busca na próxima sincronização (/mikrotik/sync, ~20s).
   let liberado = false;
@@ -210,35 +211,47 @@ async function redeChamar(env, caminho, corpo) {
 const ALERTA_PAUSA = 15 * 60 * 1000;
 
 export class Rede extends DurableObject {
-  async estado() { return (await this.ctx.storage.get('s')) || { hist: [], bytes: {}, alertas: {}, remover: [], ativos: [] }; }
+  async estado() { const s = (await this.ctx.storage.get('s')) || {}; return { hist: [], bytes: {}, alertas: {}, remover: [], ativos: [], sessoes: {}, ...s, sessoes: s.sessoes || {} }; }
   async fetch(req) {
     const u = new URL(req.url); let s = await this.estado();
     const resp = o => new Response(JSON.stringify(o), { headers: { 'Content-Type': 'application/json' } });
     if (u.pathname === '/amostra') {
-      const { metr, cfg, agora } = await req.json();
+      const { metr, cfg, agora, novos = [] } = await req.json();
+      // velocidade medida da Starlink (teste do Mikrotik) vira a capacidade de referência
+      if (metr.st > 0) { s.velocidade = { bps: metr.st, t: agora }; s.capBps = Math.max(metr.st, 10e6); s.testarAgora = false; }
       const d = decidir(metr, cfg, { capBps: s.capBps, modo: s.modo });
+      // backup de quem está conectado: registra novos acessos e conta o tempo usado (só com internet funcionando)
+      for (const nv of novos) if (!s.sessoes[nv.usuario]) s.sessoes[nv.usuario] = { id: nv.id, senha: nv.senha, total: nv.total, usado: 0, ip: nv.ip, mac: nv.mac, criado: agora };
+      const reiniciou = !!s.up && metr.up > 0 && metr.up < s.up; // uptime do Mikrotik voltou a zero = religou
+      const ct = contabilizar(s.sessoes, metr.users, { agora, anteriorT: s.t, reiniciou });
       const seg = s.t ? Math.min(120, Math.max(5, (agora - s.t) / 1000)) : 20;
       const top = topConsumo(metr.users, s.bytes, seg);
       const alertas = []; const pode = k => cfg.alertas !== false && (!s.alertas[k] || agora - s.alertas[k] > ALERTA_PAUSA);
       if (s.offlineAvisado) alertas.push('✅ WiFi Aqui: Mikrotik voltou a se comunicar.');
+      if ((reiniciou || ct.queda) && ct.restaurar.length) alertas.push(`🔄 WiFi Aqui: ${reiniciou ? 'Mikrotik reiniciou (queda de energia?)' : 'internet voltou'} — restaurando ${ct.restaurar.length} acesso(s) com o tempo que faltava.`);
+      const minTeste = +cfg.testeVelocidadeMin || 0;
+      const medir = s.testarAgora || (minTeste > 0 && d.modo !== 'saturado' && (!s.ultimoTeste || agora - s.ultimoTeste > minTeste * 60_000));
+      if (medir) s.ultimoTeste = agora;
       if (d.modo === 'saturado' && s.modo !== 'saturado' && pode('sat')) { alertas.push(`🔥 WiFi Aqui: internet SATURADA (${d.uso}% de ~${Math.round(d.capBps / 1e6)} Mbps) com ${d.n} pessoas. Limite igual de ${fmtRate(d.downBps)}bps para todos.`); s.alertas.sat = agora; }
       if (d.faixa >= 2 && d.faixa > (s.faixa ?? 0) && pode('faixa')) { alertas.push(`👥 WiFi Aqui: ${d.n} pessoas conectadas — faixa ${d.faixa + 1} (mais restrita).`); s.alertas.faixa = agora; }
-      const remover = s.remover || [];
-      s = { ...s, ...d, t: agora, txBps: +metr.txBps || 0, top, offlineAvisado: false, remover: [],
+      const remover = [...new Set([...(s.remover || []), ...ct.expirados])];
+      s = { ...s, ...d, t: agora, up: metr.up || s.up, txBps: +metr.txBps || 0, top, offlineAvisado: false, remover: [], ultimaQueda: (reiniciou || ct.queda) ? { t: agora, tipo: reiniciou ? 'energia' : 'internet', restaurados: ct.restaurar.length } : s.ultimaQueda,
         ativos: metr.users.map(x => ({ usuario: x.user, ip: x.ip, mac: x.mac, totalMB: +(x.bout / 1e6).toFixed(1) })),
         bytes: Object.fromEntries(metr.users.map(x => [x.user, x.bout])),
         hist: [...(s.hist || []), { t: agora, n: d.n, rx: d.rxBps, down: d.downBps, modo: d.modo }].slice(-360) };
       await this.ctx.storage.put('s', s);
-      return resp({ decisao: d, alertas, remover });
+      return resp({ decisao: d, alertas, remover, restaurar: ct.restaurar, medir });
     }
+    if (u.pathname === '/testar') { s.testarAgora = true; await this.ctx.storage.put('s', s); return resp({ ok: true }); }
     if (u.pathname === '/remover') { const { usuario } = await req.json(); s.remover = [...new Set([...(s.remover || []), usuario])]; await this.ctx.storage.put('s', s); return resp({ ok: true }); }
     if (u.pathname === '/checar') {
       const { agora } = await req.json(); const parado = s.t ? agora - s.t : 0;
       if (s.t && parado > 3 * 60 * 1000 && parado < 6 * 3600 * 1000 && !s.offlineAvisado) { s.offlineAvisado = true; await this.ctx.storage.put('s', s); return resp({ avisar: Math.round(parado / 60000) }); }
       return resp({ avisar: 0 });
     }
-    const { bytes, alertas, remover, ...publico } = s;
-    return resp({ ...publico, online: !!s.t && Date.now() - s.t < 90_000 });
+    const { bytes, alertas, remover, sessoes, ...publico } = s;
+    const acessos = Object.entries(sessoes || {}).map(([nome, x]) => ({ usuario: nome, ip: x.ip, mac: x.mac, restaMin: Math.max(0, Math.round((x.total - (x.usado || 0)) / 60)), totalMin: Math.round(x.total / 60), visto: x.visto })).sort((a, b) => (b.visto || 0) - (a.visto || 0));
+    return resp({ ...publico, acessos, online: !!s.t && Date.now() - s.t < 90_000 });
   }
 }
 
@@ -246,21 +259,26 @@ export class Rede extends DurableObject {
 async function sincronizar(req, env, ctx, url) {
   if (!env.MIKROTIK_TOKEN || url.searchParams.get('token') !== env.MIKROTIK_TOKEN) return new Response('ERRO token\n', { status: 401 });
   const q = new URLSearchParams(await req.text());
-  const metr = { n: +q.get('n') || 0, rxBps: +q.get('rx') || 0, txBps: +q.get('tx') || 0, users: lerUsuarios(q.get('users')) };
+  const metr = { n: +q.get('n') || 0, rxBps: +q.get('rx') || 0, txBps: +q.get('tx') || 0, up: segundosUptime(q.get('up')), st: +q.get('st') || 0, users: lerUsuarios(q.get('users')) };
   const okIds = (q.get('ok') || '').split(',').map(x => x.trim()).filter(Boolean);
   const cfg = await lerRedeCfg(env);
-  const r = await redeChamar(env, '/amostra', { metr, cfg, agora: Date.now() });
-
   let vendas = await lerVendas(env, okIds.length > 0);
+  const limitePend = Date.now() - 6 * 3600 * 1000;
+  const pendentes = vendas.filter(v => v.status === 'pago' && !v.liberado && v.mikrotik_user && new Date(v.inicio_sessao || v.criado_em).getTime() > limitePend && !okIds.includes(v.id.slice(0, 8)));
+  const novos = pendentes.map(v => ({ id: v.id.slice(0, 8), usuario: v.mikrotik_user, senha: v.mikrotik_senha || '', total: (v.minutos || 60) * 60, ip: v.ip_cliente || null, mac: v.mac_cliente || null }));
+  const r = await redeChamar(env, '/amostra', { metr, cfg, agora: Date.now(), novos });
+
   if (okIds.length) {
     let mudou = false;
     vendas = vendas.map(v => okIds.includes(v.id.slice(0, 8)) && !v.liberado ? (mudou = true, { ...v, liberado: true, liberado_em: agora() }) : v);
     if (mudou) await salvarVendas(env, vendas);
   }
-  const limite = Date.now() - 6 * 3600 * 1000;
-  const pend = vendas.filter(v => v.status === 'pago' && !v.liberado && v.mikrotik_user && new Date(v.inicio_sessao || v.criado_em).getTime() > limite).slice(0, 8);
+  // ADD <id> <usuario> <senha|-> <segundos> <ip|-> <mac|->  (cria ou devolve o tempo que faltava)
   const linhas = ['OK', `RATE ${r.decisao.downBps} ${r.decisao.upBps} ${r.decisao.modo} ${r.decisao.faixa + 1}`];
-  for (const v of pend) linhas.push(['ADD', v.id.slice(0, 8), v.mikrotik_user, v.mikrotik_senha, v.minutos || 60, v.ip_cliente || '-', v.mac_cliente || '-'].join(' '));
+  const add = (id, u, pw, seg, ip, mac) => linhas.push(['ADD', id, u, pw || '-', Math.max(60, Math.round(seg)), ip || '-', mac || '-'].join(' '));
+  for (const v of novos.slice(0, 8)) add(v.id, v.usuario, v.senha, v.total, v.ip, v.mac);
+  for (const x of (r.restaurar || []).slice(0, 40)) if (!novos.some(v => v.usuario === x.nome)) add(x.id || '-', x.nome, x.senha, x.resta, x.ip, x.mac);
+  if (r.medir) linhas.push('SPEED');
   for (const u of r.remover || []) linhas.push(`DEL ${u}`);
   linhas.push('END');
   if (r.alertas?.length) ctx.waitUntil(Promise.all(r.alertas.map(a => telegram(env, a))));
@@ -357,6 +375,7 @@ export default {
         }
         if (p === '/admin/rede' && m === 'GET') { const config = await lerRedeCfg(env); return json({ sucesso: true, ssid: config.ssid || 'WiFi Aqui', estado: await redeChamar(env, '/estado'), config }); }
         if (p === '/admin/rede' && m === 'POST') { const { ssid } = await corpo(req); const cfg = { ...(await lerRedeCfg(env)), ssid: String(ssid || '').slice(0, 32) }; await salvar(env, 'rede.json', cfg); return json({ sucesso: true, mensagem: 'Nome salvo. Ele é aplicado no AX53 (o roteador Wi-Fi).' }); }
+        if (p === '/admin/rede/testar' && m === 'POST') { await redeChamar(env, '/testar', {}); return json({ sucesso: true, mensagem: 'O Mikrotik mede na próxima sincronização (~20s)' }); }
         if (p === '/admin/rede/config' && m === 'PUT') { const cfg = mesclarConfig({ ...(await lerRedeCfg(env)), ...(await corpo(req)) }); await salvar(env, 'rede.json', cfg); return json({ sucesso: true, config: cfg }); }
         if (p.startsWith('/admin/clientes/') && m === 'DELETE') {
           const usuario = decodeURIComponent(p.split('/').pop());

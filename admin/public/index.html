@@ -512,7 +512,13 @@ body.light .si:hover { background:rgba(0,0,0,.03); }
         <div style="margin-top:12px;height:6px;border-radius:6px;background:var(--bg4);overflow:hidden"><div id="rvBar" style="height:100%;width:0%;background:var(--accent);transition:width .6s,background .6s"></div></div>
         <div id="rvModo" style="margin-top:10px;font-size:0.75rem;color:var(--text2);line-height:1.5">O Mikrotik ainda não enviou dados. Assim que ele estiver ligado e configurado, aparece aqui.</div>
         <div id="rvSpark" style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-top:10px"></div>
+        <div id="rvStar" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--bg3);font-size:0.8125rem">
+          <span>🛰️ Starlink: <b id="rvStarV">—</b> <span id="rvStarT" style="opacity:.6"></span></span>
+          <button class="btn-sm" onclick="medirStarlink(this)">Medir agora</button>
+        </div>
+        <div id="rvQueda" style="margin-top:8px;font-size:0.75rem;color:var(--text2)"></div>
         <div id="rvTop" style="margin-top:10px"></div>
+        <div id="rvAcessos" style="margin-top:10px"></div>
       </div>
 
       <!-- Mikrotik -->
@@ -720,6 +726,7 @@ body.light .si:hover { background:rgba(0,0,0,.03); }
         <div class="fg"><div class="fl">Velocidade da Starlink (Mbps)</div><input class="fi" id="rcCap" type="number" min="5"><div class="fh">Ponto de partida; o sistema aprende a real.</div></div>
         <div class="fg"><div class="fl">Mínimo por pessoa (Mbps)</div><input class="fi" id="rcPiso" type="number" min="0.25" step="0.25"></div>
       </div>
+      <div class="fg"><div class="fl">Medir a Starlink a cada (minutos, 0 = nunca)</div><input class="fi" id="rcTeste" type="number" min="0"><div class="fh">Usa ~50 MB por medição. Não mede com a rede saturada.</div></div>
       <div class="fl" style="margin:8px 0">Limite por pessoa conforme quantas estão conectadas</div>
       <div id="rcFaixas"></div>
       <div class="mo-acts">
@@ -1051,6 +1058,14 @@ async function loadRede() {
     document.getElementById('rvModo').innerHTML = (MODO_TXT[e.modo] || '') + `<br><span style="opacity:.7">Capacidade estimada da Starlink: ~${Math.round(mb(e.capBps || 0))} Mbps · atualizado há ${quando}s</span>`;
     const h = (e.hist || []).slice(-60), max = Math.max(1, ...h.map(x => x.rx));
     document.getElementById('rvSpark').innerHTML = h.map(x => `<div title="${x.n} pessoas · ${mb(x.rx).toFixed(1)} Mbps" style="flex:1;min-width:2px;border-radius:2px 2px 0 0;height:${Math.max(3, x.rx / max * 100)}%;background:${x.modo === 'saturado' ? 'var(--red)' : x.modo === 'folga' ? 'var(--accent)' : '#4da3ff'};opacity:.85"></div>`).join('');
+    const v = e.velocidade;
+    document.getElementById('rvStarV').textContent = v ? `${Math.round(v.bps / 1e6)} Mbps` : 'ainda não medida';
+    document.getElementById('rvStarT').textContent = v ? `(medido às ${new Date(v.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})` : '';
+    const q = e.ultimaQueda;
+    document.getElementById('rvQueda').innerHTML = q ? `🔄 Última queda (${q.tipo === 'energia' ? 'energia/Mikrotik religou' : 'internet'}) às ${new Date(q.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ${q.restaurados} acesso(s) restaurado(s) com o tempo que faltava.` : '';
+    const ac = (e.acessos || []).filter(a => a.restaMin > 0);
+    document.getElementById('rvAcessos').innerHTML = ac.length ? '<div style="font-size:0.6875rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin:6px 0">Acessos com tempo (backup)</div>' +
+      ac.slice(0, 30).map(a => `<div style="display:flex;justify-content:space-between;font-size:0.8125rem;padding:5px 0;border-top:1px solid var(--border)"><span style="font-family:var(--mono)">${a.ip || a.mac || a.usuario}</span><span>restam <b>${a.restaMin}</b> de ${a.totalMin} min</span></div>`).join('') : '';
     const top = (e.top || []).filter(t => t.mbps > 0.05);
     document.getElementById('rvTop').innerHTML = top.length ? '<div style="font-size:0.6875rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Maiores consumos agora</div>' +
       top.map(t => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8125rem;padding:5px 0;border-top:1px solid var(--border)"><span style="font-family:var(--mono)">${t.ip || t.user}</span><span><b>${t.mbps}</b> Mbps · ${t.totalMB} MB <button class="btn-kick" style="margin-left:6px" onclick="kickCliente('${t.user}')">✕</button></span></div>`).join('') : '';
@@ -1058,13 +1073,21 @@ async function loadRede() {
 }
 setInterval(() => { if (logged && tela === 'Dash') loadRede(); }, 15000);
 
+async function medirStarlink(btn) {
+  btn.disabled = true; btn.textContent = 'Pedindo...';
+  try { await api('/admin/rede/testar', 'POST', {}); toast('O Mikrotik mede em até 20s'); setTimeout(loadRede, 30000); }
+  catch { toast('Erro ao pedir medição', 'e'); }
+  finally { setTimeout(() => { btn.disabled = false; btn.textContent = 'Medir agora'; }, 4000); }
+}
+
 function abrirRedeCfg() {
   const c = redeCfg || {};
   const f = c.faixas || [{ ate: 5, mbps: 0 }, { ate: 15, mbps: 6 }, { ate: 30, mbps: 3 }, { ate: 9999, mbps: 1.5 }];
   document.getElementById('rcAuto').classList.toggle('on', c.automatico !== false);
   document.getElementById('rcAlert').classList.toggle('on', c.alertas !== false);
-  document.getElementById('rcCap').value = c.capacidadeMbps || 100;
+  document.getElementById('rcCap').value = c.capacidadeMbps || 200;
   document.getElementById('rcPiso').value = c.pisoMbps || 1;
+  document.getElementById('rcTeste').value = c.testeVelocidadeMin ?? 30;
   document.getElementById('rcFaixas').innerHTML = f.map((x, i) => `<div class="frow" style="margin-bottom:8px"><div class="fg"><div class="fl">Faixa ${i + 1}: até (pessoas)</div><input class="fi rcAte" type="number" min="1" value="${x.ate >= 9999 ? '' : x.ate}" placeholder="sem limite"></div><div class="fg"><div class="fl">Mbps por pessoa (0 = livre)</div><input class="fi rcMb" type="number" min="0" step="0.5" value="${x.mbps}"></div></div>`).join('');
   abrir('moRedeCfg');
 }
@@ -1076,6 +1099,7 @@ async function salvarRedeCfg() {
     alertas: document.getElementById('rcAlert').classList.contains('on'),
     capacidadeMbps: +document.getElementById('rcCap').value || 100,
     pisoMbps: +document.getElementById('rcPiso').value || 1,
+    testeVelocidadeMin: Math.max(0, +document.getElementById('rcTeste').value || 0),
     faixas: ates.map((a, i) => ({ ate: a, mbps: mbs[i] })),
   };
   try { await api('/admin/rede/config', 'PUT', body); toast('Ajustes salvos — o Mikrotik aplica em até 20s'); fechar('moRedeCfg'); loadRede(); }

@@ -8,7 +8,7 @@
 
 export const CONFIG_PADRAO = {
   automatico: true,          // false = usa só a tabela fixa
-  capacidadeMbps: 100,       // estimativa inicial da Starlink (o sistema aprende a real)
+  capacidadeMbps: 200,       // estimativa inicial da Starlink (~200 Mbps; o teste de velocidade corrige)
   aprender: true,            // ajusta a capacidade pelo pico real observado
   pisoMbps: 1,               // ninguém fica abaixo disso
   faixas: [                  // limite por pessoa conforme quantas estão conectadas (0 = sem limite)
@@ -18,6 +18,7 @@ export const CONFIG_PADRAO = {
     { ate: 9999, mbps: 1.5 },
   ],
   alertas: true,             // avisos no Telegram
+  testeVelocidadeMin: 30,    // mede a Starlink a cada X min (0 = desligado); não mede com a rede saturada
 };
 
 const M = 1_000_000;
@@ -91,3 +92,35 @@ export function topConsumo(atual, anterior = {}, segundos = 20) {
 }
 
 export const fmtRate = bps => (bps ? (bps >= M ? `${+(bps / M).toFixed(1)}M` : `${Math.round(bps / 1000)}k`) : '0');
+
+// Uptime do Mikrotik em segundos: aceita "1w2d03:04:05" (v6) e "1w2d3h4m5s" (v7)
+export function segundosUptime(txt) {
+  txt = String(txt || '').trim(); if (!txt) return 0;
+  let t = 0; const un = { w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
+  const hms = txt.match(/(\d+):(\d+):(\d+)/); if (hms) { t += +hms[1] * 3600 + +hms[2] * 60 + +hms[3]; txt = txt.replace(hms[0], ''); }
+  for (const [, n, u] of txt.matchAll(/(\d+)([wdhms])/g)) t += +n * un[u];
+  return t;
+}
+
+// Contabiliza o tempo usado de cada acesso e decide o que restaurar depois de queda.
+// sessoes: { usuario: { id, senha, total, usado, ip, mac, visto, criado } }
+export function contabilizar(sessoes, ativos, { agora, anteriorT, reiniciou }) {
+  const gapMs = anteriorT ? agora - anteriorT : 0;
+  const queda = !!anteriorT && gapMs > 60_000;
+  const porNome = new Map(ativos.map(a => [a.user, a]));
+  const porMac = new Map(ativos.filter(a => a.mac).map(a => [a.mac.toUpperCase(), a]));
+  const restaurar = [], expirados = [];
+  for (const [nome, ss] of Object.entries(sessoes)) {
+    const a = porNome.get(nome) || (ss.mac && porMac.get(ss.mac.toUpperCase()));
+    if (a) {
+      if (!queda && !reiniciou && anteriorT) ss.usado = Math.min(ss.total, (ss.usado || 0) + gapMs / 1000);
+      ss.visto = agora; if (a.ip) ss.ip = a.ip; if (a.mac) ss.mac = a.mac;
+      if (ss.usado >= ss.total) expirados.push(nome);
+    }
+    const resta = Math.max(0, Math.round(ss.total - (ss.usado || 0)));
+    const recente = agora - (ss.visto || ss.criado || 0) < 6 * 3600 * 1000;
+    if ((queda || reiniciou) && resta > 30 && recente) restaurar.push({ nome, ...ss, resta });
+    if (agora - (ss.visto || ss.criado || 0) > 24 * 3600 * 1000 || (resta <= 0 && !a)) delete sessoes[nome];
+  }
+  return { restaurar, expirados, queda };
+}

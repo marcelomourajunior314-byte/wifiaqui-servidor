@@ -88,19 +88,56 @@ console.log('Sincronização Mikrotik ↔ servidor');
 env = { ...env, MIKROTIK_HOST: '', REDE: novoDO() };
 const sync = async (body, token = 'tk') => { const w = []; const r = await W.fetch(new Request('https://wa.x/mikrotik/sync?token=' + token, { method: 'POST', body }), env, { waitUntil: x => w.push(x) }); await Promise.all(w); return [r.status, await r.text()]; };
 reset(); let [st, tx] = await sync('n=0&rx=0', 'errado'); ok(st === 401, 'sincronização sem token → recusada');
-reset(); [st, tx] = await sync('n=2&rx=5000000&tx=1000000&users=u1,192.168.0.20,AA,1,1000;u2,192.168.0.21,BB,1,500'); ok(st === 200 && /^OK\nRATE 0 0 folga 1\nEND/.test(tx), 'responde a decisão (RATE)');
+reset(); [st, tx] = await sync('n=2&rx=5000000&tx=1000000&users=u1,192.168.0.20,AA,1,1000;u2,192.168.0.21,BB,1,500'); ok(st === 200 && /^OK\nRATE 0 0 folga 1\n(SPEED\n)?END/.test(tx), 'responde a decisão (RATE)');
 id = await novaVenda(); await new Promise(r => setTimeout(r, 4100)); await run('POST', '/webhook/infinitepay', hook(id));
 ok(vendas()[0].status === 'pago' && vendas()[0].liberado === false, 'sem acesso direto: venda paga fica aguardando o Mikrotik');
 await new Promise(r => setTimeout(r, 4100)); [st, tx] = await sync('n=2&rx=5000000');
-const add = tx.split('\n').find(l => l.startsWith('ADD ')); ok(add && add.includes(' 60 192.168.10.20 '), 'Mikrotik recebe ADD com usuário, senha, 60 min e IP');
+const add = tx.split('\n').find(l => l.startsWith('ADD ')); ok(add && add.includes(' 3600 192.168.10.20 '), 'Mikrotik recebe ADD com usuário, senha, 3600 s (60 min) e IP');
 await sync('n=3&rx=5000000&ok=' + add.split(' ')[1]); await new Promise(r => setTimeout(r, 4100));
 ok(vendas()[0].liberado === true, 'Mikrotik confirma (ok=) → venda marcada como liberada');
 [st, tx] = await sync('n=3&rx=5000000'); ok(!tx.includes('ADD '), 'não manda liberar de novo');
-reset(); env.REDE = novoDO(); await sync('n=10&rx=10000000'); await sync('n=60&rx=99000000');
+reset(); env.REDE = novoDO(); await sync('n=10&rx=10000000'); await sync('n=60&rx=195000000');
 ok(tg().some(m => m.includes('SATURADA')), 'avisa no Telegram quando satura');
 await run('DELETE', '/admin/clientes/wa_9', null, { 'x-admin-password': 's' }); [st, tx] = await sync('n=1&rx=1');
 ok(tx.includes('DEL wa_9'), 'derrubar cliente pelo admin → DEL na próxima sincronização');
 const rd = await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json(); ok(rd.estado.online && rd.estado.n === 1 && rd.config.faixas.length === 4, 'admin /admin/rede mostra estado ao vivo e configuração');
 const ms = await (await run('GET', '/admin/mikrotik/status', null, { 'x-admin-password': 's' })).json(); ok(ms.conectado === true, 'status do Mikrotik pela sincronização');
+
+console.log('Quedas: energia e internet (backup de quem estava conectado)');
+const realNow = Date.now; let T = realNow(); Date.now = () => T; const passa = s => { T += s * 1000; };
+const MAC = 'AA:BB:CC:DD:EE:01';
+env = { ...env, REDE: novoDO() }; reset();
+let vid = await (await run('POST', '/portal/iniciar-pagamento', { plano_id: 'p60', ip_cliente: '192.168.0.50', mac_cliente: MAC })).json().then(x => x.venda_id);
+passa(5); await run('POST', '/webhook/infinitepay', hook(vid));
+ok(vendas()[0].mikrotik_user === MAC, 'acesso criado pelo MAC (reconecta sozinho depois de queda)');
+passa(5); [st, tx] = await sync('n=0&rx=1000000&up=1h');
+let a1 = tx.split('\n').find(l => l.startsWith('ADD ')); ok(a1 && a1.split(' ')[2] === MAC && a1.split(' ')[3] === '-' && a1.split(' ')[4] === '3600', 'primeira liberação: 60 min, sem senha (login por MAC)');
+const usr = `${MAC},192.168.0.50,${MAC},100,5000`;
+passa(20); await sync(`n=1&rx=1000000&up=1h0m20s&ok=${a1.split(' ')[1]}&users=${usr}`);
+for (let k = 0; k < 30; k++) { passa(20); await sync(`n=1&rx=1000000&up=${3600 + 40 + k * 20}s&users=${usr}`); } // 10 min de uso
+let ac = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado.acessos.find(a => a.usuario === MAC);
+ok(ac && ac.restaMin === 50, `backup sabe o tempo restante (50 de 60 min) → ${ac?.restaMin}`);
+// queda de ENERGIA: Mikrotik religa (uptime volta a zero) 15 min depois, ninguém conectado ainda
+passa(15 * 60); [st, tx] = await sync('n=0&rx=0&up=1m');
+let r1 = tx.split('\n').find(l => l.startsWith('ADD ') && l.includes(MAC)); const seg1 = +r1?.split(' ')[4];
+ok(r1 && seg1 >= 2950 && seg1 <= 3010, `energia: restaura o acesso com ~50 min (${Math.round(seg1 / 60)} min), sem descontar o tempo desligado`);
+ok(r1 && r1.split(' ')[6] === MAC, 'restauração leva o MAC (o aparelho entra sozinho ao reconectar)');
+ok(tg().some(m => m.includes('reiniciou')), 'avisa no Telegram que o Mikrotik religou e restaurou');
+passa(20); [st, tx] = await sync(`n=1&rx=1000000&up=1m20s&users=${usr}`); ok(!tx.includes('ADD '), 'depois de restaurar, não repete');
+// queda de INTERNET: Mikrotik ligado, mas 8 min sem falar com o servidor
+for (let k = 0; k < 15; k++) { passa(20); await sync(`n=1&rx=1000000&up=${100 + k * 20}s&users=${usr}`); } // +5 min de uso → restam 45
+passa(8 * 60); [st, tx] = await sync(`n=1&rx=1000000&up=${100 + 15 * 20 + 480}s&users=${usr}`);
+let r2 = tx.split('\n').find(l => l.startsWith('ADD ') && l.includes(MAC)); const seg2 = +r2?.split(' ')[4];
+ok(r2 && seg2 >= 2640 && seg2 <= 2700, `internet caiu 8 min: devolve o tempo (restam ~45 min → ${Math.round(seg2 / 60)})`);
+// fim do tempo: servidor manda derrubar
+for (let k = 0; k < 140; k++) { passa(20); [st, tx] = await sync(`n=1&rx=1000000&up=${2000 + k * 20}s&users=${usr}`); if (tx.includes('DEL ')) break; }
+ok(tx.includes(`DEL ${MAC}`), 'tempo acabou → derruba (sem ganhar tempo extra)');
+// velocidade da Starlink
+env.REDE = novoDO(); passa(1); [st, tx] = await sync('n=0&rx=0&up=10m'); ok(tx.includes('SPEED'), 'pede medição da Starlink');
+passa(20); await sync('n=0&rx=0&up=10m20s&st=187000000'); let est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
+ok(est.velocidade?.bps === 187e6 && est.capBps >= 185e6, 'velocidade medida (187 Mbps) aparece no admin e vira a capacidade');
+passa(20); [st, tx] = await sync('n=0&rx=0&up=10m40s'); ok(!tx.includes('SPEED'), 'não mede de novo antes do intervalo');
+await run('POST', '/admin/rede/testar', {}, { 'x-admin-password': 's' }); passa(20); [st, tx] = await sync('n=0&rx=0&up=11m'); ok(tx.includes('SPEED'), 'botão "Medir agora" funciona');
+Date.now = realNow;
 
 console.log(falhas ? `\n✘ ${falhas} falha(s)` : '\n✔ Tudo certo'); process.exit(falhas ? 1 : 0);
