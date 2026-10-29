@@ -78,9 +78,6 @@
     :set waSt $maxbps
     :log info ("wifiaqui: velocidade medida " . ($maxbps / 1000000) . " Mbps")
   }
-    :set waSt $maxbps
-    :log info ("wifiaqui: velocidade medida " . ($maxbps / 1000000) . " Mbps")
-  }
   :if ($cmd = "DEL") do={
     :local u [:pick $p 1]
     /ip hotspot active remove [find user=$u]
