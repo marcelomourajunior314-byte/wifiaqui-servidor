@@ -12,7 +12,7 @@
 :local pr 0
 :local lat 0
 :do { :set pr [/ping 1.1.1.1 count=3 interval=200ms] } on-error={}
-:do { :set lat [:tonum [:pick [:tostr ([/ping 1.1.1.1 count=1 as-value]->"time")] 9 12]] } on-error={}
+:do { :local t [:time { /ping 1.1.1.1 count=1 }]; :set lat [:tonum [:pick [:tostr $t] 9 12]] } on-error={}
 :foreach a in=[/ip hotspot active find] do={
   :set users ($users . [/ip hotspot active get $a user] . "," . [/ip hotspot active get $a address] . "," . [/ip hotspot active get $a mac-address] . "," . [/ip hotspot active get $a bytes-in] . "," . [/ip hotspot active get $a bytes-out] . ";")
 }
