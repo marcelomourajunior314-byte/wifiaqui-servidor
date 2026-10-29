@@ -39,9 +39,14 @@ async function salvar(env, nome, dados) {
     body: JSON.stringify({ files: { [nome]: { content: JSON.stringify(dados, null, 2) } } }),
   });
   cache.t = 0; // força reler
+  cachePlanos.t = 0;
   return r.ok;
 }
-async function lerPlanos(env) { try { const t = await arquivo(env, await gist(env), 'planos.json'); return t ? JSON.parse(t) : planosDefault } catch { return planosDefault } }
+let cachePlanos = { t: 0, v: null };
+async function lerPlanos(env) {
+  if (cachePlanos.v && Date.now() - cachePlanos.t < 30000) return cachePlanos.v; // portal abre mais rápido (planos mudam pouco)
+  try { const t = await arquivo(env, await gist(env), 'planos.json'); const v = t ? JSON.parse(t) : planosDefault; cachePlanos = { t: Date.now(), v }; return v } catch { return cachePlanos.v || planosDefault }
+}
 async function lerVendas(env, fresco) { try { const t = await arquivo(env, await gist(env, fresco), 'vendas.json'); return t ? JSON.parse(t) : [] } catch { return [] } }
 const salvarVendas = (env, v) => salvar(env, 'vendas.json', v.slice(-500));
 const salvarPlanos = (env, p) => salvar(env, 'planos.json', p);
@@ -308,7 +313,7 @@ export default {
         return portal(req, env);
       }
       if (p === '/portal/mikrotik-login')
-        return new Response(`<html><title>WiFi Aqui</title><body><form name="r" action="${url.origin}/portal" method="post"><input type="hidden" name="mac" value="$(mac)"><input type="hidden" name="ip" value="$(ip)"></form><script>document.r.submit();</script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        return new Response(`<html><head><meta charset="utf-8"><title>WiFi Aqui</title></head><body><script>location.replace("${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)");</script><noscript><meta http-equiv="refresh" content="0;url=${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)"></noscript></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
       if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env)).filter(x => x.ativo) });
       if (p === '/portal/iniciar-pagamento' && m === 'POST') {
         const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = await corpo(req);

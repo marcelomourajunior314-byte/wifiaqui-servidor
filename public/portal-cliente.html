@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WiFi Aqui — Conecte-se agora</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0a0f1e;
@@ -21,7 +20,7 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -71,7 +70,7 @@
   }
   .logo-icon svg { width: 32px; height: 32px; fill: white; }
   .brand {
-    font-family: 'Syne', sans-serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 28px;
     font-weight: 800;
     letter-spacing: -0.5px;
@@ -97,7 +96,7 @@
   .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
   .status-text { font-size: 13px; color: var(--success); font-weight: 500; }
   .section-title {
-    font-family: 'Syne', sans-serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -152,23 +151,23 @@
   }
   .plan-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; background: var(--surface2); }
   .plan-info { flex: 1; }
-  .plan-name { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+  .plan-name { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 2px; }
   .plan-desc { font-size: 12px; color: var(--muted); }
   .plan-price { text-align: right; flex-shrink: 0; }
-  .price-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
+  .price-value { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
   .price-label { font-size: 11px; color: var(--muted); }
   .plan-check { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .plan-card.selected .plan-check { background: var(--accent); border-color: var(--accent); }
   .plan-card.selected .plan-check::after { content: ''; width: 6px; height: 10px; border: 2px solid #000; border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); display: block; }
   .order-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; animation: fadeUp 0.5s ease 0.5s both; }
-  .summary-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .summary-title { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
   .summary-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px; }
   .summary-row:last-child { margin-bottom: 0; }
   .summary-label { color: var(--muted); }
   .summary-value { font-weight: 500; }
   .summary-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
-  .summary-total .summary-label { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--text); font-size: 15px; }
-  .summary-total .summary-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
+  .summary-total .summary-label { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-weight: 700; color: var(--text); font-size: 15px; }
+  .summary-total .summary-value { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
   .btn-pay {
     width: 100%;
     padding: 18px;
@@ -176,7 +175,7 @@
     border-radius: 14px;
     background: linear-gradient(135deg, var(--accent), #0099cc);
     color: #000;
-    font-family: 'Syne', sans-serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -195,18 +194,18 @@
   .footer { text-align: center; margin-top: 32px; color: var(--muted); font-size: 12px; animation: fadeUp 0.5s ease 0.65s both; }
   .pix-screen { display: none; animation: fadeDown 0.4s ease both; }
   .pix-screen.active { display: block; }
-  .back-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; padding: 8px 0; margin-bottom: 20px; transition: color 0.2s; }
+  .back-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; color: var(--muted); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; cursor: pointer; padding: 8px 0; margin-bottom: 20px; transition: color 0.2s; }
   .back-btn:hover { color: var(--text); }
   .pix-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; text-align: center; margin-bottom: 16px; }
-  .pix-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .pix-title { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
   .pix-subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
   .qr-placeholder { width: 200px; height: 200px; margin: 0 auto 20px; background: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
   .qr-placeholder svg { width: 160px; height: 160px; }
   .qr-loading { position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; }
   .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  .pix-amount { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+  .pix-amount { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 32px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
   .pix-plan { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
-  .copy-btn { width: 100%; padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-bottom: 10px; }
+  .copy-btn { width: 100%; padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-bottom: 10px; }
   .copy-btn:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
   .timer-bar { background: var(--surface2); border-radius: 100px; height: 6px; margin: 16px 0 8px; overflow: hidden; }
   .timer-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 1s linear; }
@@ -215,10 +214,10 @@
   .success-screen { display: none; text-align: center; padding: 40px 0; animation: scaleIn 0.4s ease both; }
   .success-screen.active { display: block; }
   .success-icon { width: 80px; height: 80px; background: linear-gradient(135deg, var(--success), #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 8px 32px rgba(16,185,129,0.4); }
-  .success-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+  .success-title { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 8px; }
   .success-sub { color: var(--muted); font-size: 15px; margin-bottom: 28px; }
   .access-info { background: var(--surface); border: 1px solid rgba(16,185,129,0.2); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
-  .access-timer { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; color: var(--success); letter-spacing: -1px; }
+  .access-timer { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 42px; font-weight: 800; color: var(--success); letter-spacing: -1px; }
   .access-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
   @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -274,9 +273,9 @@
       <div class="summary-title">Seus dados</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <input type="text" id="clienteNome" placeholder="Seu nome completo" 
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none">
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;outline:none">
         <input type="tel" id="clienteCelular" placeholder="Celular (ex: 47991234567)"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none">
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;outline:none">
       </div>
     </div>
 
