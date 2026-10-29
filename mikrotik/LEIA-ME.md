@@ -4,8 +4,8 @@ Aplicados pelo Claude através do notebook ligado à conversa (SSH no Mikrotik).
 
 1. `0-rede-base.rsc` — rede do zero: ether1 internet (DHCP), ether2 gerência (192.168.10.1), ether3 clientes 192.168.50.1/24 com DHCP e hotspot. O AX53 fica em 192.168.50.2, gateway 192.168.50.1. Não usar 192.168.0.x, que é a faixa dos modems e conflita com a ether1.
 2. `1-divisao-e-portal.rsc` — filas PCQ (divisão justa), FastTrack desligado, walled garden e login.html do portal.
-3. Criar o script `wifiaqui-sync-base` com o conteúdo de `wifiaqui-sync-base.rsc`.
-4. `2-sincronizacao.rsc` com o token real (segredo `MIKROTIK_TOKEN` do Cloudflare) — cria o script `wifiaqui-sync` e o agendador de 20s.
+3. Baixar `wifiaqui-sync-a.rsc` e `wifiaqui-sync-b.rsc` (o RouterOS 6 lê no máximo ~4 KB por arquivo, por isso o corpo da sincronização vem em duas partes).
+4. Definir o token só na memória (`:global waToken "..."`) e importar `2-sincronizacao.rsc` — cria o script `wifiaqui-sync` e o agendador de 20s. O token é o segredo `MIKROTIK_TOKEN` do Cloudflare e nunca vai para o GitHub.
 
 Como funciona: a cada 20s o Mikrotik chama `POST /mikrotik/sync` e recebe:
 - `RATE <down> <up> <modo> <faixa>` → teto por pessoa nas filas PCQ (0 = sem limite)
