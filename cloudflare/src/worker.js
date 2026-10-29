@@ -314,6 +314,17 @@ export default {
       }
       if (p === '/portal/mikrotik-login')
         return new Response(`<html><head><meta charset="utf-8"><title>WiFi Aqui</title></head><body><script>location.replace("${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)&lg="+encodeURIComponent("$(link-login-only)"));</script><noscript><meta http-equiv="refresh" content="0;url=${url.origin}/portal?mac=$(mac-esc)&ip=$(ip)"></noscript></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      // Página de status do hotspot (quem já tem internet e digita http://wifi.aqui): volta ao portal do cliente
+      if (p === '/portal/mikrotik-status')
+        return new Response(`<html><head><meta charset="utf-8"><title>WiFi Aqui</title></head><body><script>location.replace("${url.origin}/portal?mac="+encodeURIComponent("$(mac)")+"&ip="+encodeURIComponent("$(ip)"));</script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      // Pagamento em andamento deste aparelho (últimos 15 min): o portal retoma a tela mesmo em outro navegador
+      if (p === '/portal/pendente') {
+        const mac = (url.searchParams.get('mac') || '').toLowerCase();
+        if (!mac) return json({ sucesso: true, venda_id: null });
+        const limite = Date.now() - 15 * 60 * 1000;
+        const v = (await lerVendas(env)).filter(x => (x.mac_cliente || '').toLowerCase() === mac && ['pendente', 'pago'].includes(x.status) && new Date(x.criado_em).getTime() > limite).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))[0];
+        return json({ sucesso: true, venda_id: v ? v.id : null });
+      }
       if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env)).filter(x => x.ativo) });
       if (p === '/portal/iniciar-pagamento' && m === 'POST') {
         const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = await corpo(req);

@@ -29,5 +29,10 @@
 
 # 5) Página de login do hotspot → portal no Cloudflare (envia MAC e IP do cliente)
 /tool fetch url=("https://" . $servidor . "/portal/mikrotik-login") dst-path=flash/hotspot/login.html mode=https check-certificate=no
+# 5b) Quem já tem internet (teste de pagamento ou plano) digita http://wifi.aqui e volta ao portal
+/tool fetch url=("https://" . $servidor . "/portal/mikrotik-status") dst-path=flash/hotspot/status.html mode=https check-certificate=no
+/ip hotspot profile set [find] dns-name=wifi.aqui
+/ip dns static remove [find comment="WiFi Aqui nome"]
+/ip dns static add name=wifi.aqui address=192.168.50.1 comment="WiFi Aqui nome"
 
 :log info "WiFi Aqui: divisao justa e portal configurados"

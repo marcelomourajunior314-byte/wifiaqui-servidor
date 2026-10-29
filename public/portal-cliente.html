@@ -580,23 +580,24 @@ function updateCountdown(s) {
     m.toString().padStart(2,'0') + ':' + sec.toString().padStart(2,'0');
 }
 
-// Verifica se voltou de pagamento com ?venda= na URL
-function checkRetorno() {
+// Verifica se voltou de pagamento: ?venda= na URL, pagamento guardado neste navegador ou pagamento deste aparelho (pelo MAC) no servidor
+function retomarPagamento(venda) {
+  vendaId = venda;
+  selectedPlanData = { minutos: 60, preco: 0, nome: '' }; // será atualizado pelo polling
+  document.getElementById('mainScreen').style.display = 'none';
+  document.getElementById('pixScreen').classList.add('active');
+  document.getElementById('pixAmount').textContent = '';
+  document.getElementById('pixPlan').textContent = 'Verificando pagamento...';
+  pixSeconds = 60;
+  startPixTimer();
+  startPolling();
+}
+async function checkRetorno() {
   const params = new URLSearchParams(window.location.search);
   let venda = params.get('venda');
-  // voltou ao portal depois de copiar o código/abrir o app do banco: retoma o pagamento em andamento (até 15 min)
   if (!venda) { try { const pd = JSON.parse(localStorage.getItem('wa_pend') || 'null'); if (pd && pd.id && Date.now() - pd.t < 15 * 60 * 1000) venda = pd.id; } catch (e) {} }
-  if (venda) {
-    vendaId = venda;
-    selectedPlanData = { minutos: 60, preco: 0, nome: '' }; // será atualizado pelo polling
-    document.getElementById('mainScreen').style.display = 'none';
-    document.getElementById('pixScreen').classList.add('active');
-    document.getElementById('pixAmount').textContent = '';
-    document.getElementById('pixPlan').textContent = 'Verificando pagamento...';
-    pixSeconds = 60;
-    startPixTimer();
-    startPolling();
-  }
+  if (!venda && clienteMac()) { try { const r = await fetch(SERVER + '/portal/pendente?mac=' + encodeURIComponent(clienteMac())); const d = await r.json(); if (d.venda_id) venda = d.venda_id; } catch (e) {} }
+  if (venda) retomarPagamento(venda);
 }
 
 // Init
