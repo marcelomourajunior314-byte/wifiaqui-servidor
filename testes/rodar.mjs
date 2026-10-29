@@ -136,6 +136,9 @@ ok(tx.includes(`DEL ${MAC}`), 'tempo acabou → derruba (sem ganhar tempo extra)
 env.REDE = novoDO(); passa(1); [st, tx] = await sync('n=0&rx=0&up=10m'); ok(tx.includes('SPEED'), 'pede medição da Starlink');
 passa(20); await sync('n=0&rx=0&up=10m20s&st=187000000'); let est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
 ok(est.velocidade?.bps === 187e6 && est.capBps >= 185e6, 'velocidade medida (187 Mbps) aparece no admin e vira a capacidade');
+passa(20); await sync('n=0&rx=0&up=10m30s&st=150000000'); passa(20); await sync('n=0&rx=0&up=10m35s&st=170000000');
+est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
+ok(est.velocidade.bps === 170e6 && est.velocidadeAnterior.bps === 150e6 && !JSON.stringify(est).includes('187000000'), 'guarda só a última e a anterior medição (a mais antiga some)');
 passa(20); [st, tx] = await sync('n=0&rx=0&up=10m40s'); ok(!tx.includes('SPEED'), 'não mede de novo antes do intervalo');
 await run('POST', '/admin/rede/testar', {}, { 'x-admin-password': 's' }); passa(20); [st, tx] = await sync('n=0&rx=0&up=11m'); ok(tx.includes('SPEED'), 'botão "Medir agora" funciona');
 // saúde da conexão

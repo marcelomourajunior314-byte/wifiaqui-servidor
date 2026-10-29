@@ -1060,7 +1060,9 @@ async function loadRede() {
     document.getElementById('rvSpark').innerHTML = h.map(x => `<div title="${x.n} pessoas · ${mb(x.rx).toFixed(1)} Mbps" style="flex:1;min-width:2px;border-radius:2px 2px 0 0;height:${Math.max(3, x.rx / max * 100)}%;background:${x.modo === 'saturado' ? 'var(--red)' : x.modo === 'folga' ? 'var(--accent)' : '#4da3ff'};opacity:.85"></div>`).join('');
     const v = e.velocidade;
     document.getElementById('rvStarV').textContent = v ? `${Math.round(v.bps / 1e6)} Mbps` : 'ainda não medida';
-    document.getElementById('rvStarT').textContent = v ? `(medido às ${new Date(v.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})` : '';
+    const hm = t => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const va = e.velocidadeAnterior;
+    document.getElementById('rvStarT').textContent = v ? `(${hm(v.t)}${va ? ` · antes ${Math.round(va.bps / 1e6)} Mbps às ${hm(va.t)}` : ''})` : '';
     const ql = e.qualidade || {};
     const QL = { estavel: '🟢 Conexão estável', oscilando: '🟡 Conexão oscilando', instavel: '🔴 Conexão instável' };
     document.getElementById('rvQual').innerHTML = ql.estado && QL[ql.estado] ? `${QL[ql.estado]} · perda ${ql.perda}%${ql.ping ? ` · ping ${ql.ping} ms` : ''}` : '';

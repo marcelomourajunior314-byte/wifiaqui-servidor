@@ -218,7 +218,7 @@ export class Rede extends DurableObject {
     if (u.pathname === '/amostra') {
       const { metr, cfg, agora, novos = [] } = await req.json();
       // velocidade medida da Starlink (teste do Mikrotik) vira a capacidade de referência
-      if (metr.st > 0) { s.velocidade = { bps: metr.st, t: agora }; s.capBps = Math.max(metr.st, 10e6); s.testarAgora = false; }
+      if (metr.st > 0) { s.velocidadeAnterior = s.velocidade || null; s.velocidade = { bps: metr.st, t: agora }; /* guarda só a última e a anterior */ s.capBps = Math.max(metr.st, 10e6); s.testarAgora = false; }
       const d = decidir(metr, cfg, { capBps: s.capBps, modo: s.modo });
       // backup de quem está conectado: registra novos acessos e conta o tempo usado (só com internet funcionando)
       for (const nv of novos) if (!s.sessoes[nv.usuario]) s.sessoes[nv.usuario] = { id: nv.id, senha: nv.senha, total: nv.total, usado: 0, ip: nv.ip, mac: nv.mac, criado: agora };
