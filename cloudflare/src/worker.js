@@ -4,7 +4,7 @@
 //  - Mikrotik via RouterOS API (TCP 8728) usando sockets do Cloudflare
 import { connect } from 'cloudflare:sockets';
 
-const VERSAO = '3.0-cloudflare';
+const VERSAO = '3.1-cloudflare';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': '*' };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
 
@@ -139,6 +139,23 @@ async function portal(req, env) {
   return env.ASSETS.fetch(new Request(u.origin + '/portal-cliente.html'));
 }
 
+// ---------------- Segurança: confirma o pagamento na própria InfinitePay ----------------
+async function confirmarPagamento(env, body) {
+  const { order_nsu, transaction_nsu, invoice_slug } = body || {};
+  if (!order_nsu || !transaction_nsu || !invoice_slug) return 'nao_pago';
+  try {
+    const r = await fetch('https://api.checkout.infinitepay.io/payment_check', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handle: env.INFINITEPAY_HANDLE, order_nsu, transaction_nsu, slug: invoice_slug }),
+    });
+    if (r.status >= 400 && r.status < 500 && r.status !== 429) return 'nao_pago';
+    if (!r.ok) return 'indefinido';
+    const d = await r.json().catch(() => null);
+    if (!d || typeof d.paid !== 'boolean') return 'indefinido';
+    return d.success !== false && d.paid ? 'pago' : 'nao_pago';
+  } catch (e) { console.error('payment_check', e.message); return 'indefinido'; }
+}
+
 // ---------------- Webhook ----------------
 async function processarPagamento(body, env) {
   const { order_nsu, items } = body || {};
@@ -146,6 +163,12 @@ async function processarPagamento(body, env) {
   const vendas = await lerVendas(env, true);
   const i = vendas.findIndex(v => v.id === order_nsu);
   if (i < 0 || vendas[i].status === 'pago') return;
+  const conf = await confirmarPagamento(env, body);
+  if (conf === 'nao_pago') {
+    console.warn('Webhook recusado (pagamento não confirmado na InfinitePay)', order_nsu);
+    await telegram(env, `⚠️ WiFi Aqui: aviso de pagamento RECUSADO (não confirmado na InfinitePay)\nVenda: ${order_nsu}\nSe o valor caiu na sua conta, libere o acesso manualmente.`);
+    return;
+  }
   const venda = vendas[i];
   const desc = items?.[0]?.description || '';
   const ipDesc = desc.match(/IP:([^|]+)/)?.[1]?.trim() || null;
@@ -166,7 +189,7 @@ async function processarPagamento(body, env) {
   await salvarVendas(env, vendas);
   await telegram(env, ['💳 NOVA VENDA — WiFi Aqui!', `📶 Plano: ${plano.nome} (${plano.minutos}min)`, `💰 Valor: R$${(venda.valor / 100).toFixed(2)}`,
     venda.cliente_nome ? `👤 Nome: ${venda.cliente_nome}` : '', venda.cliente_celular ? `📱 Celular: ${venda.cliente_celular}` : '',
-    `🔌 MAC: ${venda.mac_cliente || 'N/A'}`, `🌐 IP: ${venda.ip_cliente || 'N/A'}`].filter(Boolean).join('\n'));
+    `🔌 MAC: ${venda.mac_cliente || 'N/A'}`, `🌐 IP: ${venda.ip_cliente || 'N/A'}`, conf === 'indefinido' ? '⚠️ Não consegui confirmar na InfinitePay agora — confira se o valor caiu.' : ''].filter(Boolean).join('\n'));
 }
 
 // ---------------- Rotas ----------------
