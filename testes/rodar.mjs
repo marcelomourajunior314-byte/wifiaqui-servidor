@@ -32,8 +32,13 @@ export function connect() {
     } } });
   return { readable, writable, close() { try { c.close() } catch {} } };
 }`);
-writeFileSync(tmp + '/worker.mjs', readFileSync(raiz + 'cloudflare/src/worker.js', 'utf8').replace("from 'cloudflare:sockets'", "from './sockets.mjs'"));
-const W = (await import(pathToFileURL(tmp + '/worker.mjs'))).default;
+writeFileSync(tmp + '/workers.mjs', 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }');
+writeFileSync(tmp + '/rede.js', readFileSync(raiz + 'cloudflare/src/rede.js', 'utf8'));
+writeFileSync(tmp + '/worker.mjs', readFileSync(raiz + 'cloudflare/src/worker.js', 'utf8').replace("from 'cloudflare:sockets'", "from './sockets.mjs'").replace("from 'cloudflare:workers'", "from './workers.mjs'"));
+const MOD = await import(pathToFileURL(tmp + '/worker.mjs')); const W = MOD.default;
+const R = await import(pathToFileURL(tmp + '/rede.js'));
+const novoDO = () => { const mem = new Map(); const obj = new MOD.Rede({ storage: { get: async k => mem.get(k), put: async (k, v) => mem.set(k, JSON.parse(JSON.stringify(v))) } }, {});
+  return { idFromName: () => 'x', get: () => ({ fetch: (u, o) => obj.fetch(new Request(u, o)) }) }; };
 const { log } = await import(pathToFileURL(tmp + '/sockets.mjs'));
 
 console.log('Servidor (cloudflare/src/worker.js)');
@@ -46,7 +51,7 @@ globalThis.fetch = async (u, o = {}) => { u = String(u); const m = o.method || '
   if (u.includes('/links')) return J({ url: 'https://pay/1' });
   if (u.includes('telegram')) return J({ ok: true });
   return J({}, 404); };
-const env = { WIFIAQUI_GIST_ID: 'G', GITHUB_TOKEN: 't', TG_BOT_TOKEN: 'b', TG_CHAT_ID: '1', INFINITEPAY_HANDLE: 'h', ADMIN_PASSWORD: 's', MIKROTIK_HOST: '1.1.1.1', MIKROTIK_PASSWORD: 'certa',
+let env = { REDE: novoDO(), MIKROTIK_TOKEN: 'tk', WIFIAQUI_GIST_ID: 'G', GITHUB_TOKEN: 't', TG_BOT_TOKEN: 'b', TG_CHAT_ID: '1', INFINITEPAY_HANDLE: 'h', ADMIN_PASSWORD: 's', MIKROTIK_HOST: '1.1.1.1', MIKROTIK_PASSWORD: 'certa',
   ASSETS: { fetch: async r => new Response('PORTAL ' + new URL(r.url).pathname) } };
 const run = async (m, p, b, h = {}) => { const w = []; const r = await W.fetch(new Request('https://wa.x' + p, { method: m, headers: { 'content-type': 'application/json', ...h }, body: b ? JSON.stringify(b) : undefined }), env, { waitUntil: x => w.push(x) }); await Promise.all(w); return r; };
 const vendas = () => JSON.parse(files['vendas.json']?.content || '[]');
@@ -67,5 +72,35 @@ reset(); id = await novaVenda(); await new Promise(r => setTimeout(r, 4100)); aw
 ok(vendas()[0].status === 'pendente', 'webhook falso (sem transaction_nsu) é recusado');
 reset(); ok((await run('GET', '/admin/dashboard')).status === 401, 'admin sem senha → 401');
 reset(); ok((await (await run('GET', '/admin/mikrotik/status', null, { 'x-admin-password': 's' })).json()).conectado === true, 'admin: status do Mikrotik');
+
+console.log('Controle de rede (decisões)');
+const Mb = 1e6; const cfg = R.mesclarConfig({ capacidadeMbps: 100 });
+let d = R.decidir({ n: 3, rxBps: 10 * Mb }, cfg); ok(d.modo === 'folga' && d.downBps === 0, 'poucas pessoas e internet sobrando → sem limite');
+d = R.decidir({ n: 20, rxBps: 60 * Mb }, cfg); ok(d.modo === 'normal' && d.downBps === 3 * Mb, '20 pessoas, uso normal → 3 Mbps cada (tabela)');
+d = R.decidir({ n: 20, rxBps: 20 * Mb }, cfg); ok(d.modo === 'folga' && d.downBps === 6 * Mb, '20 pessoas mas internet sobrando → libera mais (6 Mbps)');
+d = R.decidir({ n: 80, rxBps: 98 * Mb }, cfg); ok(d.modo === 'saturado' && d.downBps === Math.round(Math.max(1 * Mb, Math.min(1.5 * Mb, d.capBps * 0.9 / 80))) && d.downBps < 1.5 * Mb, '80 pessoas e saturada → aperta igual para todos');
+d = R.decidir({ n: 200, rxBps: 99 * Mb }, cfg); ok(d.downBps === 1 * Mb, 'nunca abaixo do piso (1 Mbps)');
+let ant = { modo: 'saturado', capBps: 100 * Mb }; d = R.decidir({ n: 40, rxBps: 80 * Mb }, cfg, ant); ok(d.modo === 'saturado', 'histerese: não sai de saturado com 80% (evita ficar pulando)');
+d = R.decidir({ n: 10, rxBps: 150 * Mb }, cfg, { capBps: 100 * Mb }); ok(d.capBps === 150 * Mb, 'aprende a velocidade real da Starlink pelo pico');
+ok(R.topConsumo([{ user: 'a', bout: 30e6 }, { user: 'b', bout: 5e6 }], { a: 5e6, b: 4e6 }, 20)[0].user === 'a', 'identifica quem mais consome');
+
+console.log('Sincronização Mikrotik ↔ servidor');
+env = { ...env, MIKROTIK_HOST: '', REDE: novoDO() };
+const sync = async (body, token = 'tk') => { const w = []; const r = await W.fetch(new Request('https://wa.x/mikrotik/sync?token=' + token, { method: 'POST', body }), env, { waitUntil: x => w.push(x) }); await Promise.all(w); return [r.status, await r.text()]; };
+reset(); let [st, tx] = await sync('n=0&rx=0', 'errado'); ok(st === 401, 'sincronização sem token → recusada');
+reset(); [st, tx] = await sync('n=2&rx=5000000&tx=1000000&users=u1,192.168.0.20,AA,1,1000;u2,192.168.0.21,BB,1,500'); ok(st === 200 && /^OK\nRATE 0 0 folga 1\nEND/.test(tx), 'responde a decisão (RATE)');
+id = await novaVenda(); await new Promise(r => setTimeout(r, 4100)); await run('POST', '/webhook/infinitepay', hook(id));
+ok(vendas()[0].status === 'pago' && vendas()[0].liberado === false, 'sem acesso direto: venda paga fica aguardando o Mikrotik');
+await new Promise(r => setTimeout(r, 4100)); [st, tx] = await sync('n=2&rx=5000000');
+const add = tx.split('\n').find(l => l.startsWith('ADD ')); ok(add && add.includes(' 60 192.168.10.20 '), 'Mikrotik recebe ADD com usuário, senha, 60 min e IP');
+await sync('n=3&rx=5000000&ok=' + add.split(' ')[1]); await new Promise(r => setTimeout(r, 4100));
+ok(vendas()[0].liberado === true, 'Mikrotik confirma (ok=) → venda marcada como liberada');
+[st, tx] = await sync('n=3&rx=5000000'); ok(!tx.includes('ADD '), 'não manda liberar de novo');
+reset(); env.REDE = novoDO(); await sync('n=10&rx=10000000'); await sync('n=60&rx=99000000');
+ok(tg().some(m => m.includes('SATURADA')), 'avisa no Telegram quando satura');
+await run('DELETE', '/admin/clientes/wa_9', null, { 'x-admin-password': 's' }); [st, tx] = await sync('n=1&rx=1');
+ok(tx.includes('DEL wa_9'), 'derrubar cliente pelo admin → DEL na próxima sincronização');
+const rd = await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json(); ok(rd.estado.online && rd.estado.n === 1 && rd.config.faixas.length === 4, 'admin /admin/rede mostra estado ao vivo e configuração');
+const ms = await (await run('GET', '/admin/mikrotik/status', null, { 'x-admin-password': 's' })).json(); ok(ms.conectado === true, 'status do Mikrotik pela sincronização');
 
 console.log(falhas ? `\n✘ ${falhas} falha(s)` : '\n✔ Tudo certo'); process.exit(falhas ? 1 : 0);

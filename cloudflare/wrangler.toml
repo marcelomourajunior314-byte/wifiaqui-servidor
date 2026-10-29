@@ -2,7 +2,7 @@
 # Deploy automático: Cloudflare > Workers & Pages > Import a repository
 #   Repositório: wifiaqui-servidor | Pasta raiz (Root directory): cloudflare
 # Segredos (Settings > Variables and Secrets, tipo "Secret"):
-#   GITHUB_TOKEN, TG_BOT_TOKEN, ADMIN_PASSWORD, MIKROTIK_PASSWORD
+#   GITHUB_TOKEN, TG_BOT_TOKEN, ADMIN_PASSWORD, MIKROTIK_TOKEN (senha da sincronização do Mikrotik), MIKROTIK_PASSWORD (opcional)
 # Variável (tipo "Text"): MIKROTIK_HOST = IP público ou DDNS do Mikrotik
 name = "wifiaqui-api"
 main = "src/worker.js"
@@ -25,3 +25,16 @@ MIKROTIK_USER      = "admin"
 
 [observability]
 enabled = true
+
+# Estado ao vivo da rede (pessoas conectadas, consumo, decisões) — gratuito
+[[durable_objects.bindings]]
+name = "REDE"
+class_name = "Rede"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Rede"]
+
+# Verifica a cada 5 min se o Mikrotik parou de se comunicar
+[triggers]
+crons = ["*/5 * * * *"]

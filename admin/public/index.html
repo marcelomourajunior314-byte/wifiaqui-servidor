@@ -494,27 +494,25 @@ body.light .si:hover { background:rgba(0,0,0,.03); }
         <div class="bars" id="barChart"><div class="loading"><div class="spinner"></div></div></div>
       </div>
 
-      <!-- Starlink -->
+      <!-- Rede ao vivo (dados enviados pelo Mikrotik a cada ~20s) -->
       <div class="sl-card">
         <div class="sl-hdr">
-          <div class="sl-title"><span class="sl-ico">🛰️</span>Starlink</div>
-          <div class="sl-badge off" id="slBadge"><div class="sl-dot"></div><span id="slTxt">Não ativada</span></div>
-        </div>
-        <div class="sl-grid">
-          <div class="sm"><div class="sm-val" id="slDl">—</div><div class="sm-unit">Mbps</div><div class="sm-lbl">⬇ Down</div></div>
-          <div class="sm"><div class="sm-val" id="slUl">—</div><div class="sm-unit">Mbps</div><div class="sm-lbl">⬆ Up</div></div>
-          <div class="sm"><div class="sm-val" id="slPing">—</div><div class="sm-unit">ms</div><div class="sm-lbl">🏓 Ping</div></div>
-          <div class="sm">
-            <div class="sig-bars" id="slBars">
-              <div class="sig-bar" style="height:4px"></div>
-              <div class="sig-bar" style="height:7px"></div>
-              <div class="sig-bar" style="height:10px"></div>
-              <div class="sig-bar" style="height:13px"></div>
-              <div class="sig-bar" style="height:16px"></div>
-            </div>
-            <div class="sm-lbl">📶 Sinal</div>
+          <div class="sl-title"><span class="sl-ico">🛰️</span>Rede ao vivo</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div class="sl-badge off" id="slBadge"><div class="sl-dot"></div><span id="slTxt">Aguardando Mikrotik</span></div>
+            <button class="btn-sm" onclick="abrirRedeCfg()" title="Ajustes da divisão">⚙</button>
           </div>
         </div>
+        <div class="sl-grid">
+          <div class="sm"><div class="sm-val" id="rvN">—</div><div class="sm-unit">pessoas</div><div class="sm-lbl">👥 Usando</div></div>
+          <div class="sm"><div class="sm-val" id="rvDl">—</div><div class="sm-unit">Mbps</div><div class="sm-lbl">⬇ Consumo</div></div>
+          <div class="sm"><div class="sm-val" id="rvLim">—</div><div class="sm-unit" id="rvLimU">Mbps</div><div class="sm-lbl">🎯 Por pessoa</div></div>
+          <div class="sm"><div class="sm-val" id="rvUso">—</div><div class="sm-unit">%</div><div class="sm-lbl">📶 Ocupação</div></div>
+        </div>
+        <div style="margin-top:12px;height:6px;border-radius:6px;background:var(--bg4);overflow:hidden"><div id="rvBar" style="height:100%;width:0%;background:var(--accent);transition:width .6s,background .6s"></div></div>
+        <div id="rvModo" style="margin-top:10px;font-size:0.75rem;color:var(--text2);line-height:1.5">O Mikrotik ainda não enviou dados. Assim que ele estiver ligado e configurado, aparece aqui.</div>
+        <div id="rvSpark" style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-top:10px"></div>
+        <div id="rvTop" style="margin-top:10px"></div>
       </div>
 
       <!-- Mikrotik -->
@@ -710,6 +708,28 @@ body.light .si:hover { background:rgba(0,0,0,.03); }
   </div>
 </div>
 
+<!-- MODAL AJUSTES DA DIVISÃO DA INTERNET -->
+<div class="mo" id="moRedeCfg">
+  <div class="mo-sheet" style="max-height:90vh;overflow:auto">
+    <div class="mo-handle"></div>
+    <div class="mo-title">🎯 Divisão da internet</div>
+    <div class="mf">
+      <div class="si" style="padding:10px 0;border:none"><div><div class="si-txt">Ajuste automático</div><div class="si-sub">Libera mais quando sobra, aperta igual quando enche</div></div><button class="tog" id="rcAuto" onclick="this.classList.toggle('on')"></button></div>
+      <div class="si" style="padding:10px 0;border:none"><div><div class="si-txt">Avisos no Telegram</div><div class="si-sub">Internet saturada, lotação alta, Mikrotik offline</div></div><button class="tog" id="rcAlert" onclick="this.classList.toggle('on')"></button></div>
+      <div class="frow">
+        <div class="fg"><div class="fl">Velocidade da Starlink (Mbps)</div><input class="fi" id="rcCap" type="number" min="5"><div class="fh">Ponto de partida; o sistema aprende a real.</div></div>
+        <div class="fg"><div class="fl">Mínimo por pessoa (Mbps)</div><input class="fi" id="rcPiso" type="number" min="0.25" step="0.25"></div>
+      </div>
+      <div class="fl" style="margin:8px 0">Limite por pessoa conforme quantas estão conectadas</div>
+      <div id="rcFaixas"></div>
+      <div class="mo-acts">
+        <button class="btn-cancel" onclick="fechar('moRedeCfg')">Cancelar</button>
+        <button class="btn-save" onclick="salvarRedeCfg()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL REDE -->
 <div class="mo" id="moRede">
   <div class="mo-sheet">
@@ -881,7 +901,7 @@ function entrar() {
   document.getElementById('app').style.display = 'block';
   document.getElementById('cfgUrl').textContent = SERVER;
   loadDash();
-  loadStarlink();
+  loadRede();
   iniciarRf();
 }
 
@@ -941,6 +961,7 @@ async function loadDash() {
     toast('Erro ao carregar dados','e');
   } finally { btn.classList.remove('spin'); }
   loadMk();
+  loadRede();
 }
 
 async function loadMk() {
@@ -1002,30 +1023,64 @@ async function renderGrafico(vendasHoje) {
   }).join('');
 }
 
-// ══ STARLINK ══
-async function loadStarlink() {
+// ══ REDE AO VIVO ══
+let redeCfg = null;
+const MODO_TXT = {
+  folga: '🟢 <b>Folga</b> — internet sobrando, liberando mais para todos igualmente.',
+  normal: '🔵 <b>Normal</b> — limite por pessoa conforme a lotação.',
+  saturado: '🔴 <b>Saturada</b> — internet no limite, apertando igualmente para ninguém ficar sem.',
+};
+async function loadRede() {
   try {
-    const r = await fetch('http://192.168.100.1/api/dish/status', { signal: AbortSignal.timeout(3000) });
-    if (!r.ok) throw new Error();
-    const d = await r.json();
-    const dl   = (d.downlink_throughput_bps/1e6).toFixed(1);
-    const ul   = (d.uplink_throughput_bps/1e6).toFixed(1);
-    const ping = Math.round(d.pop_ping_latency_ms||0);
-    const bars = Math.min(5, Math.round(((d.snr||0)/9)*5));
-    document.getElementById('slDl').textContent   = dl;
-    document.getElementById('slUl').textContent   = ul;
-    document.getElementById('slPing').textContent = ping;
-    document.querySelectorAll('#slBars .sig-bar').forEach((b,i)=>b.classList.toggle('on',i<bars));
-    document.getElementById('slBadge').className  = 'sl-badge on';
-    document.getElementById('slTxt').textContent  = `${dl} Mbps ↓`;
-  } catch {
-    document.getElementById('slBadge').className = 'sl-badge off';
-    document.getElementById('slTxt').textContent = 'Não ativada';
-    ['slDl','slUl','slPing'].forEach(id=>document.getElementById(id).textContent='—');
-    document.querySelectorAll('#slBars .sig-bar').forEach(b=>b.classList.remove('on'));
-  }
+    const d = await api('/admin/rede');
+    const e = d.estado || {}; redeCfg = d.config;
+    const on = !!e.online;
+    document.getElementById('slBadge').className = 'sl-badge ' + (on ? 'on' : 'off');
+    document.getElementById('slTxt').textContent = on ? `Faixa ${(e.faixa ?? 0) + 1}` : (e.t ? 'Sem comunicação' : 'Aguardando Mikrotik');
+    if (!e.t) return;
+    const mb = v => (v / 1e6);
+    document.getElementById('rvN').textContent = e.n ?? 0;
+    document.getElementById('rvDl').textContent = mb(e.rxBps || 0).toFixed(1);
+    document.getElementById('rvLim').textContent = e.downBps ? mb(e.downBps).toFixed(1) : 'livre';
+    document.getElementById('rvLimU').textContent = e.downBps ? 'Mbps' : 'sem limite';
+    document.getElementById('rvUso').textContent = e.uso ?? 0;
+    const bar = document.getElementById('rvBar');
+    bar.style.width = Math.min(100, e.uso || 0) + '%';
+    bar.style.background = e.modo === 'saturado' ? 'var(--red)' : e.modo === 'folga' ? 'var(--accent)' : '#4da3ff';
+    const quando = Math.round((Date.now() - e.t) / 1000);
+    document.getElementById('rvModo').innerHTML = (MODO_TXT[e.modo] || '') + `<br><span style="opacity:.7">Capacidade estimada da Starlink: ~${Math.round(mb(e.capBps || 0))} Mbps · atualizado há ${quando}s</span>`;
+    const h = (e.hist || []).slice(-60), max = Math.max(1, ...h.map(x => x.rx));
+    document.getElementById('rvSpark').innerHTML = h.map(x => `<div title="${x.n} pessoas · ${mb(x.rx).toFixed(1)} Mbps" style="flex:1;min-width:2px;border-radius:2px 2px 0 0;height:${Math.max(3, x.rx / max * 100)}%;background:${x.modo === 'saturado' ? 'var(--red)' : x.modo === 'folga' ? 'var(--accent)' : '#4da3ff'};opacity:.85"></div>`).join('');
+    const top = (e.top || []).filter(t => t.mbps > 0.05);
+    document.getElementById('rvTop').innerHTML = top.length ? '<div style="font-size:0.6875rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Maiores consumos agora</div>' +
+      top.map(t => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8125rem;padding:5px 0;border-top:1px solid var(--border)"><span style="font-family:var(--mono)">${t.ip || t.user}</span><span><b>${t.mbps}</b> Mbps · ${t.totalMB} MB <button class="btn-kick" style="margin-left:6px" onclick="kickCliente('${t.user}')">✕</button></span></div>`).join('') : '';
+  } catch { /* silencioso: o card mostra o último estado */ }
 }
-setInterval(()=>{ if(logged) loadStarlink(); }, 15000);
+setInterval(() => { if (logged && tela === 'Dash') loadRede(); }, 15000);
+
+function abrirRedeCfg() {
+  const c = redeCfg || {};
+  const f = c.faixas || [{ ate: 5, mbps: 0 }, { ate: 15, mbps: 6 }, { ate: 30, mbps: 3 }, { ate: 9999, mbps: 1.5 }];
+  document.getElementById('rcAuto').classList.toggle('on', c.automatico !== false);
+  document.getElementById('rcAlert').classList.toggle('on', c.alertas !== false);
+  document.getElementById('rcCap').value = c.capacidadeMbps || 100;
+  document.getElementById('rcPiso').value = c.pisoMbps || 1;
+  document.getElementById('rcFaixas').innerHTML = f.map((x, i) => `<div class="frow" style="margin-bottom:8px"><div class="fg"><div class="fl">Faixa ${i + 1}: até (pessoas)</div><input class="fi rcAte" type="number" min="1" value="${x.ate >= 9999 ? '' : x.ate}" placeholder="sem limite"></div><div class="fg"><div class="fl">Mbps por pessoa (0 = livre)</div><input class="fi rcMb" type="number" min="0" step="0.5" value="${x.mbps}"></div></div>`).join('');
+  abrir('moRedeCfg');
+}
+async function salvarRedeCfg() {
+  const ates = [...document.querySelectorAll('.rcAte')].map(i => +i.value || 9999);
+  const mbs = [...document.querySelectorAll('.rcMb')].map(i => +i.value || 0);
+  const body = {
+    automatico: document.getElementById('rcAuto').classList.contains('on'),
+    alertas: document.getElementById('rcAlert').classList.contains('on'),
+    capacidadeMbps: +document.getElementById('rcCap').value || 100,
+    pisoMbps: +document.getElementById('rcPiso').value || 1,
+    faixas: ates.map((a, i) => ({ ate: a, mbps: mbs[i] })),
+  };
+  try { await api('/admin/rede/config', 'PUT', body); toast('Ajustes salvos — o Mikrotik aplica em até 20s'); fechar('moRedeCfg'); loadRede(); }
+  catch { toast('Erro ao salvar', 'e'); }
+}
 
 // ══ PLANOS ══
 async function loadPlanos() {
