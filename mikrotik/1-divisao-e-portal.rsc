@@ -23,7 +23,7 @@
 :if ([:len [find comment="WiFi Aqui - DNS"]] = 0) do={ add dst-port=53 protocol=udp action=accept comment="WiFi Aqui - DNS" }
 
 # 4) Reconexão automática pelo MAC: quem pagou volta a navegar sozinho depois de queda de energia/internet
-/ip hotspot profile set [find] login-by=mac,http-chap,http-pap,https,cookie mac-auth-mode=mac-as-username
+/ip hotspot profile set [find] login-by=mac,cookie,http-chap,http-pap mac-auth-mode=mac-as-username
 
 # 5) Página de login do hotspot → portal no Cloudflare (envia MAC e IP do cliente)
 /tool fetch url=("https://" . $servidor . "/portal/mikrotik-login") dst-path=flash/hotspot/login.html mode=https check-certificate=no
