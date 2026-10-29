@@ -55,6 +55,7 @@ const novaVenda = async () => (await (await run('POST', '/portal/iniciar-pagamen
 const hook = (id, extra = {}) => ({ order_nsu: id, transaction_nsu: 'T', invoice_slug: 'S', items: [{ description: 'WiFi Aqui | Turbo' }], ...extra });
 
 reset(); ok((await (await run('GET', '/')).text()).includes('portal-cliente'), 'GET / mostra o portal');
+ok(/mac_cliente: clienteMac\(\), ip_cliente: clienteIp\(\)/.test(readFileSync(raiz + 'public/portal-cliente.html', 'utf8')), 'portal envia MAC e IP do Mikrotik no pagamento');
 reset(); ok((await (await run('GET', '/portal/planos')).json()).planos.length === 1, 'planos vêm do Gist');
 reset(); let id = await novaVenda(); ok(vendas()[0]?.status === 'pendente', 'venda pendente salva no Gist');
 await new Promise(r => setTimeout(r, 4100)); await run('POST', '/webhook/infinitepay', hook(id));

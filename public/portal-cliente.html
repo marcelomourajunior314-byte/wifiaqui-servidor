@@ -355,6 +355,11 @@
 
 <script>
 const SERVER = '';  // mesmo domínio
+// MAC e IP do cliente vêm do Mikrotik (login.html → /portal?mac=..&ip=..). Guardados para a volta do pagamento.
+const _qs = new URLSearchParams(location.search);
+try { if (_qs.get('mac')) sessionStorage.setItem('wa_mac', _qs.get('mac')); if (_qs.get('ip')) sessionStorage.setItem('wa_ip', _qs.get('ip')); } catch (e) {}
+const clienteMac = () => { try { return sessionStorage.getItem('wa_mac') || null; } catch (e) { return null; } };
+const clienteIp  = () => { try { return sessionStorage.getItem('wa_ip')  || null; } catch (e) { return null; } };
 let selectedPlanId = null;
 let selectedPlanData = null;
 let vendaId = null;
@@ -450,7 +455,7 @@ async function iniciarPagamento() {
     const r = await fetch(SERVER + '/portal/iniciar-pagamento', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plano_id: selectedPlanId, cliente_nome: nome, cliente_celular: celular })
+      body: JSON.stringify({ plano_id: selectedPlanId, cliente_nome: nome, cliente_celular: celular, mac_cliente: clienteMac(), ip_cliente: clienteIp() })
     });
     const data = await r.json();
     if (!data.sucesso) throw new Error(data.erro || 'Erro ao iniciar pagamento');
