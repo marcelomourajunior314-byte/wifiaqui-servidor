@@ -8,10 +8,15 @@
 :local tx 0
 /interface monitor-traffic $wan once do={ :set rx $"rx-bits-per-second"; :set tx $"tx-bits-per-second" }
 :local users ""
+# saúde da conexão: 3 pings rápidos (quase nenhum dado)
+:local pr 0
+:local lat 0
+:do { :set pr [/ping 1.1.1.1 count=3 interval=200ms] } on-error={}
+:do { :set lat [:tonum [:pick [:tostr ([/ping 1.1.1.1 count=1 as-value]->"time")] 9 12]] } on-error={}
 :foreach a in=[/ip hotspot active find] do={
   :set users ($users . [/ip hotspot active get $a user] . "," . [/ip hotspot active get $a address] . "," . [/ip hotspot active get $a mac-address] . "," . [/ip hotspot active get $a bytes-in] . "," . [/ip hotspot active get $a bytes-out] . ";")
 }
-:local body ("n=" . $n . "&rx=" . $rx . "&tx=" . $tx . "&up=" . [/system resource get uptime] . "&st=" . $waSt . "&ok=" . $waOk . "&users=" . $users)
+:local body ("n=" . $n . "&rx=" . $rx . "&tx=" . $tx . "&up=" . [/system resource get uptime] . "&st=" . $waSt . "&pr=" . $pr . "&lat=" . $lat . "&ok=" . $waOk . "&users=" . $users)
 :local resp ""
 :do {
   :set resp ([/tool fetch url=$url http-method=post http-data=$body http-header-field="Content-Type: application/x-www-form-urlencoded" output=user as-value]->"data")
@@ -63,13 +68,16 @@
     :log info ("wifiaqui: acesso " . $u . " com " . $seg . "s")
   }
   :if ($cmd = "SPEED") do={
-    # mede a Starlink: baixa um arquivo da Cloudflare e observa a velocidade máxima na WAN
-    :execute script=":do { /tool fetch url=\"https://speed.cloudflare.com/__down?bytes=50000000\" output=none } on-error={}"
+    # teste rápido e leve: 20 MB da Cloudflare, mede o pico de velocidade na WAN a cada meio segundo
+    :execute script=":do { /tool fetch url=\"https://speed.cloudflare.com/__down?bytes=20000000\" output=none } on-error={}"
     :local maxbps 0
-    :for i from=1 to=4 do={
-      :delay 1s
+    :for i from=1 to=5 do={
+      :delay 500ms
       /interface monitor-traffic $wan once do={ :if ($"rx-bits-per-second" > $maxbps) do={ :set maxbps $"rx-bits-per-second" } }
     }
+    :set waSt $maxbps
+    :log info ("wifiaqui: velocidade medida " . ($maxbps / 1000000) . " Mbps")
+  }
     :set waSt $maxbps
     :log info ("wifiaqui: velocidade medida " . ($maxbps / 1000000) . " Mbps")
   }

@@ -35,6 +35,6 @@ class_name = "Rede"
 tag = "v1"
 new_sqlite_classes = ["Rede"]
 
-# Verifica a cada 5 min se o Mikrotik parou de se comunicar
+# Verifica a cada minuto se o Mikrotik parou de se comunicar (avisa após 2 min)
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["* * * * *"]

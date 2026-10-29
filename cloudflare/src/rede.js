@@ -18,7 +18,7 @@ export const CONFIG_PADRAO = {
     { ate: 9999, mbps: 1.5 },
   ],
   alertas: true,             // avisos no Telegram
-  testeVelocidadeMin: 30,    // mede a Starlink a cada X min (0 = desligado); não mede com a rede saturada
+  testeVelocidadeMin: 5,     // teste rápido (20 MB) a cada X min, só com a rede folgada (0 = desligado)
 };
 
 const M = 1_000_000;
@@ -123,4 +123,15 @@ export function contabilizar(sessoes, ativos, { agora, anteriorT, reiniciou }) {
     if (agora - (ss.visto || ss.criado || 0) > 24 * 3600 * 1000 || (resta <= 0 && !a)) delete sessoes[nome];
   }
   return { restaurar, expirados, queda };
+}
+
+// Qualidade da conexão pelo ping de cada sincronização (perda em %, latência em ms)
+export function qualidade(hist) {
+  const ult = (hist || []).slice(-6).filter(h => h.perda != null);
+  if (!ult.length) return { estado: 'sem dados' };
+  const perda = Math.round(ult.reduce((a, h) => a + h.perda, 0) / ult.length);
+  const lats = ult.map(h => h.ping).filter(x => x > 0);
+  const ping = lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) : null;
+  const estado = perda >= 34 ? 'instavel' : perda > 0 || (ping && ping > 150) ? 'oscilando' : 'estavel';
+  return { estado, perda, ping };
 }

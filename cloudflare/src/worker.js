@@ -4,9 +4,9 @@
 //  - Mikrotik via RouterOS API (TCP 8728) usando sockets do Cloudflare
 import { connect } from 'cloudflare:sockets';
 import { DurableObject } from 'cloudflare:workers';
-import { decidir, lerUsuarios, topConsumo, mesclarConfig, fmtRate, CONFIG_PADRAO, segundosUptime, contabilizar } from './rede.js';
+import { decidir, lerUsuarios, topConsumo, mesclarConfig, fmtRate, CONFIG_PADRAO, segundosUptime, contabilizar, qualidade } from './rede.js';
 
-const VERSAO = '4.1-cloudflare';
+const VERSAO = '4.2-cloudflare';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': '*' };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
 
@@ -230,7 +230,7 @@ export class Rede extends DurableObject {
       if (s.offlineAvisado) alertas.push('✅ WiFi Aqui: Mikrotik voltou a se comunicar.');
       if ((reiniciou || ct.queda) && ct.restaurar.length) alertas.push(`🔄 WiFi Aqui: ${reiniciou ? 'Mikrotik reiniciou (queda de energia?)' : 'internet voltou'} — restaurando ${ct.restaurar.length} acesso(s) com o tempo que faltava.`);
       const minTeste = +cfg.testeVelocidadeMin || 0;
-      const medir = s.testarAgora || (minTeste > 0 && d.modo !== 'saturado' && (!s.ultimoTeste || agora - s.ultimoTeste > minTeste * 60_000));
+      const medir = s.testarAgora || (minTeste > 0 && d.uso < 60 && (!s.ultimoTeste || agora - s.ultimoTeste > minTeste * 60_000));
       if (medir) s.ultimoTeste = agora;
       if (d.modo === 'saturado' && s.modo !== 'saturado' && pode('sat')) { alertas.push(`🔥 WiFi Aqui: internet SATURADA (${d.uso}% de ~${Math.round(d.capBps / 1e6)} Mbps) com ${d.n} pessoas. Limite igual de ${fmtRate(d.downBps)}bps para todos.`); s.alertas.sat = agora; }
       if (d.faixa >= 2 && d.faixa > (s.faixa ?? 0) && pode('faixa')) { alertas.push(`👥 WiFi Aqui: ${d.n} pessoas conectadas — faixa ${d.faixa + 1} (mais restrita).`); s.alertas.faixa = agora; }
@@ -238,7 +238,9 @@ export class Rede extends DurableObject {
       s = { ...s, ...d, t: agora, up: metr.up || s.up, txBps: +metr.txBps || 0, top, offlineAvisado: false, remover: [], ultimaQueda: (reiniciou || ct.queda) ? { t: agora, tipo: reiniciou ? 'energia' : 'internet', restaurados: ct.restaurar.length } : s.ultimaQueda,
         ativos: metr.users.map(x => ({ usuario: x.user, ip: x.ip, mac: x.mac, totalMB: +(x.bout / 1e6).toFixed(1) })),
         bytes: Object.fromEntries(metr.users.map(x => [x.user, x.bout])),
-        hist: [...(s.hist || []), { t: agora, n: d.n, rx: d.rxBps, down: d.downBps, modo: d.modo }].slice(-360) };
+        hist: [...(s.hist || []), { t: agora, n: d.n, rx: d.rxBps, down: d.downBps, modo: d.modo, perda: metr.perda, ping: metr.ping }].slice(-360) };
+      s.qualidade = qualidade(s.hist);
+      if (s.qualidade.estado === 'instavel' && pode('inst')) { alertas.push(`📉 WiFi Aqui: conexão INSTÁVEL — perda de ${s.qualidade.perda}%${s.qualidade.ping ? `, ping ${s.qualidade.ping} ms` : ''}. Verifique a Starlink (obstrução/cabo).`); s.alertas.inst = agora; }
       await this.ctx.storage.put('s', s);
       return resp({ decisao: d, alertas, remover, restaurar: ct.restaurar, medir });
     }
@@ -246,7 +248,7 @@ export class Rede extends DurableObject {
     if (u.pathname === '/remover') { const { usuario } = await req.json(); s.remover = [...new Set([...(s.remover || []), usuario])]; await this.ctx.storage.put('s', s); return resp({ ok: true }); }
     if (u.pathname === '/checar') {
       const { agora } = await req.json(); const parado = s.t ? agora - s.t : 0;
-      if (s.t && parado > 3 * 60 * 1000 && parado < 6 * 3600 * 1000 && !s.offlineAvisado) { s.offlineAvisado = true; await this.ctx.storage.put('s', s); return resp({ avisar: Math.round(parado / 60000) }); }
+      if (s.t && parado > 2 * 60 * 1000 && parado < 6 * 3600 * 1000 && !s.offlineAvisado) { s.offlineAvisado = true; await this.ctx.storage.put('s', s); return resp({ avisar: Math.round(parado / 60000) }); }
       return resp({ avisar: 0 });
     }
     const { bytes, alertas, remover, sessoes, ...publico } = s;
@@ -259,7 +261,8 @@ export class Rede extends DurableObject {
 async function sincronizar(req, env, ctx, url) {
   if (!env.MIKROTIK_TOKEN || url.searchParams.get('token') !== env.MIKROTIK_TOKEN) return new Response('ERRO token\n', { status: 401 });
   const q = new URLSearchParams(await req.text());
-  const metr = { n: +q.get('n') || 0, rxBps: +q.get('rx') || 0, txBps: +q.get('tx') || 0, up: segundosUptime(q.get('up')), st: +q.get('st') || 0, users: lerUsuarios(q.get('users')) };
+  const metr = { n: +q.get('n') || 0, rxBps: +q.get('rx') || 0, txBps: +q.get('tx') || 0, up: segundosUptime(q.get('up')), st: +q.get('st') || 0,
+    perda: q.has('pr') ? Math.max(0, Math.min(100, Math.round((3 - (+q.get('pr') || 0)) / 3 * 100))) : null, ping: +q.get('lat') || null, users: lerUsuarios(q.get('users')) };
   const okIds = (q.get('ok') || '').split(',').map(x => x.trim()).filter(Boolean);
   const cfg = await lerRedeCfg(env);
   let vendas = await lerVendas(env, okIds.length > 0);

@@ -138,6 +138,15 @@ passa(20); await sync('n=0&rx=0&up=10m20s&st=187000000'); let est = (await (awai
 ok(est.velocidade?.bps === 187e6 && est.capBps >= 185e6, 'velocidade medida (187 Mbps) aparece no admin e vira a capacidade');
 passa(20); [st, tx] = await sync('n=0&rx=0&up=10m40s'); ok(!tx.includes('SPEED'), 'não mede de novo antes do intervalo');
 await run('POST', '/admin/rede/testar', {}, { 'x-admin-password': 's' }); passa(20); [st, tx] = await sync('n=0&rx=0&up=11m'); ok(tx.includes('SPEED'), 'botão "Medir agora" funciona');
+// saúde da conexão
+env.REDE = novoDO(); reset();
+for (let k = 0; k < 4; k++) { passa(20); await sync(`n=2&rx=1000000&up=${700 + k * 20}s&pr=3&lat=38`); }
+est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
+ok(est.qualidade?.estado === 'estavel' && est.qualidade.ping === 38, 'saúde da conexão: estável, ping 38 ms');
+for (let k = 0; k < 6; k++) { passa(20); await sync(`n=2&rx=1000000&up=${800 + k * 20}s&pr=1&lat=0`); }
+est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
+ok(est.qualidade?.estado === 'instavel' && tg().some(m => m.includes('INSTÁVEL')), 'perda de pacotes → "instável" no admin e aviso no Telegram');
+passa(20); [st, tx] = await sync('n=2&rx=190000000&up=1000s&pr=3'); ok(!tx.includes('SPEED'), 'não faz teste de velocidade com a rede ocupada');
 Date.now = realNow;
 
 console.log(falhas ? `\n✘ ${falhas} falha(s)` : '\n✔ Tudo certo'); process.exit(falhas ? 1 : 0);

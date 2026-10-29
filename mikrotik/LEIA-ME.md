@@ -10,7 +10,8 @@ Aplicados pelo Claude através do notebook ligado à conversa (SSH no Mikrotik).
 Como funciona: a cada 20s o Mikrotik chama `POST /mikrotik/sync` e recebe:
 - `RATE <down> <up> <modo> <faixa>` → teto por pessoa nas filas PCQ (0 = sem limite)
 - `ADD <id> <usuario> <senha|-> <segundos> <ip|-> <mac|->` → libera quem pagou, ou devolve o tempo que faltava depois de queda (confirma com `ok=<id>`)
-- `SPEED` → mede a velocidade da Starlink (~50 MB da Cloudflare) e manda em `st=` na próxima chamada
+- `SPEED` → teste rápido de velocidade (20 MB, só com a rede folgada) → `st=` na próxima chamada
+- Toda chamada leva `pr=` (pings respondidos de 3) e `lat=` (ms) — saúde da conexão o tempo todo
 - `DEL <usuario>` → derruba o cliente pedido no admin
 
 O token **nunca** vai para o GitHub (repositório público).

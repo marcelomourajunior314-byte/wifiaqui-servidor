@@ -513,7 +513,7 @@ body.light .si:hover { background:rgba(0,0,0,.03); }
         <div id="rvModo" style="margin-top:10px;font-size:0.75rem;color:var(--text2);line-height:1.5">O Mikrotik ainda não enviou dados. Assim que ele estiver ligado e configurado, aparece aqui.</div>
         <div id="rvSpark" style="display:flex;align-items:flex-end;gap:2px;height:38px;margin-top:10px"></div>
         <div id="rvStar" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--bg3);font-size:0.8125rem">
-          <span>🛰️ Starlink: <b id="rvStarV">—</b> <span id="rvStarT" style="opacity:.6"></span></span>
+          <span>🛰️ Starlink: <b id="rvStarV">—</b> <span id="rvStarT" style="opacity:.6"></span><br><span id="rvQual" style="font-size:0.75rem"></span></span>
           <button class="btn-sm" onclick="medirStarlink(this)">Medir agora</button>
         </div>
         <div id="rvQueda" style="margin-top:8px;font-size:0.75rem;color:var(--text2)"></div>
@@ -726,7 +726,7 @@ body.light .si:hover { background:rgba(0,0,0,.03); }
         <div class="fg"><div class="fl">Velocidade da Starlink (Mbps)</div><input class="fi" id="rcCap" type="number" min="5"><div class="fh">Ponto de partida; o sistema aprende a real.</div></div>
         <div class="fg"><div class="fl">Mínimo por pessoa (Mbps)</div><input class="fi" id="rcPiso" type="number" min="0.25" step="0.25"></div>
       </div>
-      <div class="fg"><div class="fl">Medir a Starlink a cada (minutos, 0 = nunca)</div><input class="fi" id="rcTeste" type="number" min="0"><div class="fh">Usa ~50 MB por medição. Não mede com a rede saturada.</div></div>
+      <div class="fg"><div class="fl">Medir a Starlink a cada (minutos, 0 = nunca)</div><input class="fi" id="rcTeste" type="number" min="0"><div class="fh">Teste rápido de ~20 MB, só quando a rede está folgada. A saúde da conexão (ping) é verificada a cada 20s.</div></div>
       <div class="fl" style="margin:8px 0">Limite por pessoa conforme quantas estão conectadas</div>
       <div id="rcFaixas"></div>
       <div class="mo-acts">
@@ -1061,6 +1061,9 @@ async function loadRede() {
     const v = e.velocidade;
     document.getElementById('rvStarV').textContent = v ? `${Math.round(v.bps / 1e6)} Mbps` : 'ainda não medida';
     document.getElementById('rvStarT').textContent = v ? `(medido às ${new Date(v.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})` : '';
+    const ql = e.qualidade || {};
+    const QL = { estavel: '🟢 Conexão estável', oscilando: '🟡 Conexão oscilando', instavel: '🔴 Conexão instável' };
+    document.getElementById('rvQual').innerHTML = ql.estado && QL[ql.estado] ? `${QL[ql.estado]} · perda ${ql.perda}%${ql.ping ? ` · ping ${ql.ping} ms` : ''}` : '';
     const q = e.ultimaQueda;
     document.getElementById('rvQueda').innerHTML = q ? `🔄 Última queda (${q.tipo === 'energia' ? 'energia/Mikrotik religou' : 'internet'}) às ${new Date(q.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ${q.restaurados} acesso(s) restaurado(s) com o tempo que faltava.` : '';
     const ac = (e.acessos || []).filter(a => a.restaMin > 0);
