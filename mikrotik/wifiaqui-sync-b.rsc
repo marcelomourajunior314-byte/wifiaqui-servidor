@@ -6,7 +6,7 @@
   :local linha [:pick $resp $pos $fim]
   :set pos ($fim + 1)
   # separa as palavras da linha
-  :local p {}
+  :local p [:toarray ""]
   :local ini 0
   :local esp [:find $linha " " 0]
   :while ([:typeof $esp] != "nil") do={ :set p ($p, [:pick $linha $ini $esp]); :set ini ($esp + 1); :set esp [:find $linha " " $ini] }
