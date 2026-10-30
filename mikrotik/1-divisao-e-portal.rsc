@@ -16,7 +16,7 @@
 
 # 3) Liberar (sem pagar) o portal e o pagamento
 /ip hotspot walled-garden
-:foreach h in={$servidor; "*.infinitepay.io"; "checkout.infinitepay.io"; "*.infinitepay.com.br"; "*.cloudflare.com"; "speed.cloudflare.com"; "*.google.com"; "*.googletagmanager.com"; "*.gstatic.com"; "*.amplitude.com"; "*.cloudflare.net"; "*.rudderlabs.com"; "*.cloudfront.net"; "*.clarity.ms"; "*.msn.com"} do={
+:foreach h in={$servidor; "*.infinitepay.io"; "checkout.infinitepay.io"; "*.infinitepay.com.br"; "*.cloudflare.com"; "speed.cloudflare.com"; "*.google.com"; "*.googletagmanager.com"; "*.gstatic.com"; "*.amplitude.com"; "*.cloudflare.net"; "*.rudderlabs.com"; "*.cloudfront.net"; "*.clarity.ms"; "*.msn.com"; "*.online-metrix.net"; "*.rudderstack.com"; "*.trafficmanager.net"; "*.googleapis.com"; "*.googleusercontent.com"; "*.recaptcha.net"; "dns.google"} do={
   :if ([:len [find dst-host=$h]] = 0) do={ add dst-host=$h action=allow comment="WiFi Aqui" }
 }
 /ip hotspot walled-garden ip
