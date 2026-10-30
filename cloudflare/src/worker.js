@@ -359,7 +359,7 @@ export default {
         const vendas = await lerVendas(env, true);
         vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, url_checkout: d.url, criado_em: agora() });
         await salvarVendas(env, vendas);
-        if (irLink) return new Response(null, { status: 302, headers: { Location: d.url } });
+        if (irLink) { const lg = q.get('lg') || ''; const destino = (mac_cliente && /^http:\/\//.test(lg)) ? lg + '?username=' + encodeURIComponent('T-' + mac_cliente) + '&dst=' + encodeURIComponent(d.url) : d.url; return new Response(null, { status: 302, headers: { Location: destino } }); }
         return json({ sucesso: true, url_pagamento: d.url, venda_id: vendaId, plano: { nome: plano.nome, minutos: plano.minutos, preco: plano.preco } });
       }
       if (p.startsWith('/portal/status/')) {
