@@ -45,3 +45,11 @@
 }
 :if ([:len [/ip firewall filter find where comment="WiFi Aqui checkout"]] = 0) do={ /ip firewall filter add chain=forward src-address=192.168.50.0/24 dst-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout" }
 :if ([:len [/ip firewall nat find where comment="WiFi Aqui checkout"]] = 0) do={ /ip firewall nat add chain=dstnat src-address=192.168.50.0/24 dst-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout" }
+
+# 7) Volta do checkout (resposta do servidor para o celular) e atualização dos endereços: os sites trocam de IP o tempo todo,
+#    então a cada 2s os IPs que o celular acabou de resolver (nomes do checkout) entram na lista wa-checkout por 15 min
+:if ([:len [/ip firewall filter find where comment="WiFi Aqui checkout retorno"]] = 0) do={ /ip firewall filter add chain=forward dst-address=192.168.50.0/24 src-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout retorno" }
+/system script remove [find name=wa-dns-lista]
+/system script add name=wa-dns-lista policy=read,write,test,policy source=":foreach i in=[/ip dns cache find where type=A] do={ :local n [/ip dns cache get \$i name]; :if (\$n~\"infinitepay|google|gstatic|cloudfront|rudder|clarity|metrix|amplitude|msn|cloudflare|cloudapp|trafficmanager|azurefd\") do={ :local a [/ip dns cache get \$i data]; :if ([:len [/ip firewall address-list find where list=wa-checkout address=\$a]]=0) do={ /ip firewall address-list add list=wa-checkout address=\$a timeout=15m } } }"
+/system scheduler remove [find name=wa-dns-lista]
+/system scheduler add name=wa-dns-lista interval=2s on-event=wa-dns-lista
