@@ -61,7 +61,7 @@ const hook = (id, extra = {}) => ({ order_nsu: id, transaction_nsu: 'T', invoice
 
 reset(); ok((await (await run('GET', '/')).text()).includes('portal-cliente'), 'GET / mostra o portal');
 ok(/mac_cliente: clienteMac\(\), ip_cliente: clienteIp\(\)/.test(readFileSync(raiz + 'public/portal-cliente.html', 'utf8')), 'portal envia MAC e IP do Mikrotik no pagamento');
-{ const h = readFileSync(raiz + 'public/portal-cliente.html', 'utf8'); ok(/window\.open\(urlPagamento\(data\.url_pagamento\)/.test(h) && h.includes("'T-'"), 'pagamento abre pelo acesso de teste do hotspot (trial)'); }
+{ const h = readFileSync(raiz + 'public/portal-cliente.html', 'utf8'); ok(/window\.open\(urlPagamento\(data\.url_pagamento\)/.test(h) && !h.includes("'T-'"), 'pagamento abre direto (sem internet de teste)'); }
 reset(); { const t = await (await run('GET', '/portal/mikrotik-status')).text(); ok(t.includes('$(mac)') && t.includes('/portal?mac='), 'status.html do hotspot volta ao portal'); }
 reset(); { const m = 'AA:BB:CC:DD:EE:99'; const vid = (await (await run('POST', '/portal/iniciar-pagamento', { plano_id: 'p60', ip_cliente: '192.168.10.30', mac_cliente: m })).json()).venda_id; const d = await (await run('GET', '/portal/pendente?mac=' + encodeURIComponent(m))).json(); const o = await (await run('GET', '/portal/pendente?mac=00:00:00:00:00:00')).json(); ok(d.venda_id === vid && o.venda_id === null, 'portal acha o pagamento em andamento pelo MAC do aparelho'); }
 reset(); { const t = await (await run('GET', '/portal/mikrotik-login')).text(); ok(t.includes('$(link-login-only)') && t.includes('$(mac-esc)') && !t.includes('googleapis'), 'login.html envia MAC, IP e link de login do Mikrotik'); }
