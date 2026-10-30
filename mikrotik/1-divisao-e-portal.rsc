@@ -16,7 +16,7 @@
 
 # 3) Liberar (sem pagar) o portal e o pagamento
 /ip hotspot walled-garden
-:foreach h in={$servidor; "*.infinitepay.io"; "checkout.infinitepay.io"; "*.infinitepay.com.br"; "*.cloudflare.com"; "speed.cloudflare.com"; "*.google.com"; "*.googletagmanager.com"; "*.gstatic.com"; "*.amplitude.com"; "*.cloudflare.net"; "*.rudderlabs.com"; "*.cloudfront.net"; "*.clarity.ms"; "*.msn.com"; "*.online-metrix.net"; "*.rudderstack.com"; "*.trafficmanager.net"; "*.googleapis.com"; "*.googleusercontent.com"; "*.recaptcha.net"; "dns.google"} do={
+:foreach h in={$servidor; "*.infinitepay.io"; "checkout.infinitepay.io"; "*.infinitepay.com.br"; "*.cloudflare.com"; "speed.cloudflare.com"; "*.amplitude.com"; "*.cloudflare.net"; "*.rudderlabs.com"; "*.cloudfront.net"; "*.clarity.ms"; "*.msn.com"; "*.online-metrix.net"; "*.rudderstack.com"; "*.trafficmanager.net"; "*.recaptcha.net"} do={
   :if ([:len [find dst-host=$h]] = 0) do={ add dst-host=$h action=allow comment="WiFi Aqui" }
 }
 /ip hotspot walled-garden ip
@@ -39,17 +39,11 @@
 :if ([:len [/ip hotspot user profile find name=trial-wa]] = 0) do={ /ip hotspot user profile add name=trial-wa address-list=trial-wa }
 :if ([:len [/ip firewall nat find comment="WiFi Aqui trial volta ao portal"]] = 0) do={ /ip firewall nat add chain=dstnat action=redirect to-ports=64874 protocol=tcp dst-port=80 src-address-list=trial-wa place-before=0 comment="WiFi Aqui trial volta ao portal" }
 
-# 6) Checkout da InfinitePay liberado SEM internet (o aparelho continua "preso" ao portal e a janela do Wi-Fi não fecha)
-:foreach h in={"checkout.infinitepay.io";"assets.infinitepay.io";"infinitepay-api-v2.services.production.infinitepay.io";"infinitepay-invoice-api.services.production.infinitepay.io";"api.lab.amplitude.com";"cdn.rudderlabs.com";"api.rudderstack.com";"www.clarity.ms";"scripts.clarity.ms";"e.clarity.ms";"c.clarity.ms";"c.msn.com";"www.googletagmanager.com";"h.online-metrix.net";"play.google.com";"pay.google.com";"www.google.com";"www.gstatic.com";"fonts.gstatic.com";"fonts.googleapis.com";"challenges.cloudflare.com";"speed.cloudflare.com"} do={
-  :if ([:len [/ip firewall address-list find where list=wa-checkout address=$h]] = 0) do={ /ip firewall address-list add list=wa-checkout address=$h comment="WiFi Aqui checkout" }
-}
-:if ([:len [/ip firewall filter find where comment="WiFi Aqui checkout"]] = 0) do={ /ip firewall filter add chain=forward src-address=192.168.50.0/24 dst-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout" }
-:if ([:len [/ip firewall nat find where comment="WiFi Aqui checkout"]] = 0) do={ /ip firewall nat add chain=dstnat src-address=192.168.50.0/24 dst-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout" }
-
-# 7) Volta do checkout (resposta do servidor para o celular) e atualização dos endereços: os sites trocam de IP o tempo todo,
-#    então a cada 2s os IPs que o celular acabou de resolver (nomes do checkout) entram na lista wa-checkout por 15 min
-:if ([:len [/ip firewall filter find where comment="WiFi Aqui checkout retorno"]] = 0) do={ /ip firewall filter add chain=forward dst-address=192.168.50.0/24 src-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout retorno" }
-/system script remove [find name=wa-dns-lista]
-/system script add name=wa-dns-lista policy=read,write,test,policy source=":foreach i in=[/ip dns cache find where type=A] do={ :local n [/ip dns cache get \$i name]; :if (\$n~\"infinitepay|google|gstatic|cloudfront|rudder|clarity|metrix|amplitude|msn|cloudflare|cloudapp|trafficmanager|azurefd\") do={ :local a [/ip dns cache get \$i data]; :if ([:len [/ip firewall address-list find where list=wa-checkout address=\$a]]=0) do={ /ip firewall address-list add list=wa-checkout address=\$a timeout=15m } } }"
+# 6) Limpeza: removidas as regras "wa-checkout" e o script wa-dns-lista (quebravam a detecção de portal no Android).
+#    Nunca liberar google.com/gstatic.com (connectivitycheck, captive.apple.com) no walled garden.
 /system scheduler remove [find name=wa-dns-lista]
-/system scheduler add name=wa-dns-lista interval=2s on-event=wa-dns-lista
+/system script remove [find name=wa-dns-lista]
+/ip firewall nat remove [find comment~"WiFi Aqui checkout"]
+/ip firewall filter remove [find comment~"WiFi Aqui checkout"]
+/ip firewall address-list remove [find list=wa-checkout]
+/ip hotspot walled-garden remove [find dst-host~"google|gstatic"]
