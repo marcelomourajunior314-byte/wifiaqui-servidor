@@ -609,8 +609,9 @@ function retomarPagamento(venda) {
 async function checkRetorno() {
   const params = new URLSearchParams(window.location.search);
   let venda = params.get('venda');
-  if (!venda) { try { const pd = JSON.parse(localStorage.getItem('wa_pend') || 'null'); if (pd && pd.id && Date.now() - pd.t < 5 * 60 * 1000) venda = pd.id; } catch (e) {} }
-  if (!venda && clienteMac()) { try { const r = await fetch(SERVER + '/portal/pendente?mac=' + encodeURIComponent(clienteMac())); const d = await r.json(); if (d.venda_id) venda = d.venda_id; } catch (e) {} }
+  const novaConexao = !!params.get('lg'); // conexão nova (login do hotspot) sempre começa do zero; só quem volta do pagamento retoma
+  if (!venda && !novaConexao) { try { const pd = JSON.parse(localStorage.getItem('wa_pend') || 'null'); if (pd && pd.id && Date.now() - pd.t < 5 * 60 * 1000) venda = pd.id; } catch (e) {} }
+  if (!venda && !novaConexao && clienteMac()) { try { const r = await fetch(SERVER + '/portal/pendente?mac=' + encodeURIComponent(clienteMac())); const d = await r.json(); if (d.venda_id) venda = d.venda_id; } catch (e) {} }
   if (venda) retomarPagamento(venda);
 }
 
