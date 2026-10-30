@@ -359,7 +359,7 @@ const _qs = new URLSearchParams(location.search);
 try { if (_qs.get('mac')) sessionStorage.setItem('wa_mac', _qs.get('mac')); if (_qs.get('ip')) sessionStorage.setItem('wa_ip', _qs.get('ip')); if (_qs.get('lg')) sessionStorage.setItem('wa_lg', _qs.get('lg')); } catch (e) {}
 const clienteLg  = () => { try { return sessionStorage.getItem('wa_lg')  || null; } catch (e) { return null; } };
 // Internet liberada por poucos minutos só para concluir o pagamento (acesso de teste do hotspot); sem o link do Mikrotik abre direto
-const urlPagamento = (u) => u;
+const urlPagamento = (u) => { const lg = clienteLg(), mac = clienteMac(); return (lg && mac && /^http:\/\//.test(lg)) ? lg + '?username=' + encodeURIComponent('T-' + mac) + '&dst=' + encodeURIComponent(u) : u; };
 const clienteMac = () => { try { return sessionStorage.getItem('wa_mac') || null; } catch (e) { return null; } };
 const clienteIp  = () => { try { return sessionStorage.getItem('wa_ip')  || null; } catch (e) { return null; } };
 let selectedPlanId = null;

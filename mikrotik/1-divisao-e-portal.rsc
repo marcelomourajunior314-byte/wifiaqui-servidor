@@ -23,8 +23,9 @@
 :if ([:len [find comment="WiFi Aqui - DNS"]] = 0) do={ add dst-port=53 protocol=udp action=accept comment="WiFi Aqui - DNS" }
 
 # 4) Reconexão automática pelo MAC: quem pagou volta a navegar sozinho depois de queda de energia/internet
-/ip hotspot profile set [find] login-by=mac,cookie,http-chap,http-pap mac-auth-mode=mac-as-username
-# Sem internet de teste: o checkout abre pela lista de liberados (walled garden), o aparelho continua no portal
+/ip hotspot profile set [find] login-by=mac,cookie,http-chap,http-pap,trial mac-auth-mode=mac-as-username
+# Acesso de teste só para concluir o pagamento (o HTTPS do checkout não passa só pelo walled garden): 3 min de internet; depois só volta a ter teste após 20 min
+/ip hotspot profile set [find] trial-uptime-limit=3m trial-uptime-reset=20m trial-user-profile=default
 
 # 5) Página de login do hotspot → portal no Cloudflare (envia MAC e IP do cliente)
 /tool fetch url=("https://" . $servidor . "/portal/mikrotik-login") dst-path=flash/hotspot/login.html mode=https check-certificate=no
