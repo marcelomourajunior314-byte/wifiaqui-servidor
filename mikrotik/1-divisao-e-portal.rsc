@@ -25,7 +25,7 @@
 # 4) Reconexão automática pelo MAC: quem pagou volta a navegar sozinho depois de queda de energia/internet
 /ip hotspot profile set [find] login-by=mac,cookie,http-chap,http-pap,trial mac-auth-mode=mac-as-username
 # Acesso de teste só para concluir o pagamento (o HTTPS do checkout não passa só pelo walled garden): 3 min de internet; depois só volta a ter teste após 20 min
-/ip hotspot profile set [find] trial-uptime-limit=3m trial-uptime-reset=20m trial-user-profile=default
+/ip hotspot profile set [find] trial-uptime-limit=3m trial-uptime-reset=20m trial-user-profile=trial-wa
 
 # 5) Página de login do hotspot → portal no Cloudflare (envia MAC e IP do cliente)
 /tool fetch url=("https://" . $servidor . "/portal/mikrotik-login") dst-path=flash/hotspot/login.html mode=https check-certificate=no
@@ -34,3 +34,7 @@
 /ip hotspot profile set [find] dns-name=wifi.aqui
 
 :log info "WiFi Aqui: divisao justa e portal configurados"
+
+# 5) Quem está no acesso de teste (pagando) e abrir qualquer site http volta ao portal (retoma o pagamento pelo MAC)
+:if ([:len [/ip hotspot user profile find name=trial-wa]] = 0) do={ /ip hotspot user profile add name=trial-wa address-list=trial-wa }
+:if ([:len [/ip firewall nat find comment="WiFi Aqui trial volta ao portal"]] = 0) do={ /ip firewall nat add chain=dstnat action=redirect to-ports=64874 protocol=tcp dst-port=80 src-address-list=trial-wa place-before=0 comment="WiFi Aqui trial volta ao portal" }
