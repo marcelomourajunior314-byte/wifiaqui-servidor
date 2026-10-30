@@ -475,7 +475,7 @@ async function iniciarPagamento() {
     aguardandoVolta = true;
     try {
       let a = document.getElementById('abrirSafari');
-      if (!a) { a = document.createElement('a'); a.id = 'abrirSafari'; a.style.cssText = 'display:block;text-align:center;margin-top:14px;color:#0099cc;font-size:14px;text-decoration:underline'; a.textContent = 'Não abriu? Abrir o pagamento no Safari'; btn.parentNode.insertBefore(a, btn.nextSibling); }
+      if (!a) { a = document.createElement('a'); a.id = 'abrirSafari'; a.style.cssText = 'display:block;text-align:center;margin-top:14px;padding:14px;border-radius:12px;background:#0099cc;color:#fff;font-size:16px;font-weight:700;text-decoration:none'; a.textContent = 'Abrir pagamento no Safari (recomendado)'; btn.parentNode.insertBefore(a, btn.nextSibling); }
       a.href = data.url_pagamento.replace(/^https:\/\//, 'x-safari-https://');
     } catch (e) {}
     clearInterval(pollingInterval);
