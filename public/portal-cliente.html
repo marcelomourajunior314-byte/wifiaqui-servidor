@@ -472,12 +472,7 @@ async function iniciarPagamento() {
     btn.disabled = false;
     btn.querySelector('.btn-inner').innerHTML = 'Pagar agora';
     aguardandoVolta = true;
-    try {
-      let a = document.getElementById('abrirSafari');
-      if (!a) { a = document.createElement('a'); a.id = 'abrirSafari'; a.style.cssText = 'display:block;text-align:center;margin-top:14px;padding:14px;border-radius:12px;background:#0099cc;color:#fff;font-size:16px;font-weight:700;text-decoration:none'; a.textContent = 'Abrir pagamento no navegador'; btn.parentNode.insertBefore(a, btn.nextSibling); }
-      a.href = urlPagamento(data.url_pagamento).replace(/^http(s?):\/\//, 'x-safari-http$1://');
-      setTimeout(() => { try { location.href = a.href; } catch (e) {} }, 50); // abre já; o botão fica como reserva
-    } catch (e) {}
+    window.open(urlPagamento(data.url_pagamento), '_blank');
     clearInterval(pollingInterval);
     pollingInterval = setInterval(verificarPagamento, 5000);
 
