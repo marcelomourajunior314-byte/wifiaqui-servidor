@@ -321,7 +321,7 @@ export default {
       if (p === '/portal/pendente') {
         const mac = (url.searchParams.get('mac') || '').toLowerCase();
         if (!mac) return json({ sucesso: true, venda_id: null });
-        const limite = Date.now() - 15 * 60 * 1000;
+        const limite = Date.now() - 5 * 60 * 1000;
         const v = (await lerVendas(env)).filter(x => (x.mac_cliente || '').toLowerCase() === mac && ['pendente', 'pago'].includes(x.status) && new Date(x.criado_em).getTime() > limite).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))[0];
         return json({ sucesso: true, venda_id: v ? v.id : null });
       }
