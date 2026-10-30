@@ -32,3 +32,7 @@
 /ip hotspot profile set [find name=default] hotspot-address=192.168.50.1
 /ip hotspot add name=hotspot1 interface=ether3 address-pool=pool-clientes profile=default disabled=no
 :log info "WiFi Aqui: rede base pronta"
+
+# relógio certo (o hEX perde a hora sem energia): NTP + fuso de São Paulo
+/system ntp client set enabled=yes server-dns-names=time.google.com,pool.ntp.org
+/system clock set time-zone-name=America/Sao_Paulo
