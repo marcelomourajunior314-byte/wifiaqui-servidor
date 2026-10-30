@@ -169,7 +169,8 @@ async function processarPagamento(body, env) {
   if (!order_nsu) return;
   const vendas = await lerVendas(env, true);
   const i = vendas.findIndex(v => v.id === order_nsu);
-  if (i < 0 || vendas[i].status === 'pago') return;
+  if (i < 0) { await telegram(env, `⚠️ WiFi Aqui: aviso de pagamento para venda desconhecida (${order_nsu}). Se o valor caiu, libere manualmente.`); return; }
+  if (vendas[i].status === 'pago') return;
   const conf = await confirmarPagamento(env, body);
   if (conf === 'nao_pago') {
     console.warn('Webhook recusado (pagamento não confirmado na InfinitePay)', order_nsu);
@@ -309,6 +310,11 @@ export default {
           const b = await corpo(req); const q = new URLSearchParams();
           if (b.mac) q.set('mac', b.mac); if (b.ip) q.set('ip', b.ip);
           return Response.redirect(`${url.origin}/portal${q.toString() ? '?' + q : ''}`, 303);
+        }
+        // Segunda via de confirmação: a InfinitePay volta ao portal com os dados do pagamento (caso o webhook falhe)
+        if (p === '/portal/sucesso' && url.searchParams.get('order_nsu') && (url.searchParams.get('transaction_nsu') || url.searchParams.get('slug'))) {
+          const q = url.searchParams;
+          ctx.waitUntil(processarPagamento({ order_nsu: q.get('order_nsu'), transaction_nsu: q.get('transaction_nsu'), invoice_slug: q.get('slug') || q.get('invoice_slug'), items: [] }, env).catch(e => console.error('retorno', e.message)));
         }
         return portal(req, env);
       }
