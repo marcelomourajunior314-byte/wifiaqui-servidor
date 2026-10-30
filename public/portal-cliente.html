@@ -246,6 +246,7 @@
       <span class="status-text">Sinal disponível — Escolha seu plano</span>
     </div>
 
+    <button id="continuarPag" style="display:none;width:100%;margin:0 0 16px;padding:14px;border:0;border-radius:14px;background:#0099cc;color:#fff;font-size:16px;font-weight:700">Continuar meu pagamento</button>
     <div id="meusAcessos" style="display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#121b29;font-size:13px">
       <div style="font-weight:700;margin-bottom:8px">Meus acessos</div><div id="meusAcessosLista"></div>
     </div>
@@ -364,7 +365,7 @@ const _qs = new URLSearchParams(location.search);
 try { if (_qs.get('mac')) sessionStorage.setItem('wa_mac', _qs.get('mac')); if (_qs.get('ip')) sessionStorage.setItem('wa_ip', _qs.get('ip')); if (_qs.get('lg')) sessionStorage.setItem('wa_lg', _qs.get('lg')); } catch (e) {}
 const clienteLg  = () => { try { return sessionStorage.getItem('wa_lg')  || null; } catch (e) { return null; } };
 // Internet liberada por poucos minutos só para concluir o pagamento (acesso de teste do hotspot); sem o link do Mikrotik abre direto
-const urlPagamento = (u) => { const lg = clienteLg(), mac = clienteMac(); return (lg && mac && /^http:\/\//.test(lg)) ? lg + '?username=' + encodeURIComponent('T-' + mac) + '&dst=' + encodeURIComponent(u) : u; };
+const urlPagamento = (u) => u;
 const clienteMac = () => { try { return sessionStorage.getItem('wa_mac') || null; } catch (e) { return null; } };
 const clienteIp  = () => { try { return sessionStorage.getItem('wa_ip')  || null; } catch (e) { return null; } };
 let selectedPlanId = null;
@@ -637,7 +638,16 @@ function retomarPagamento(venda) {
 async function checkRetorno() {
   const params = new URLSearchParams(window.location.search);
   let venda = params.get('venda');
-  const novaConexao = !!params.get('lg'); // conexão nova (login do hotspot) sempre começa do zero; só quem volta do pagamento retoma
+  const novaConexao = !!params.get('lg');
+  if (novaConexao && clienteMac()) {
+    try {
+      const r = await fetch(SERVER + '/portal/pendente?mac=' + encodeURIComponent(clienteMac())); const d = await r.json();
+      if (d.venda_id && d.status === 'pendente' && d.url) {
+        const b = document.getElementById('continuarPag');
+        if (b) { b.style.display = 'block'; b.onclick = () => { vendaId = d.venda_id; window.open(d.url, '_blank'); clearInterval(pollingInterval); pollingInterval = setInterval(verificarPagamento, 4000); }; }
+      }
+    } catch (e) {}
+  } // conexão nova (login do hotspot) sempre começa do zero; só quem volta do pagamento retoma
   if (!venda && !novaConexao) { try { const pd = JSON.parse(localStorage.getItem('wa_pend') || 'null'); if (pd && pd.id && Date.now() - pd.t < 5 * 60 * 1000) venda = pd.id; } catch (e) {} }
   if (!venda && !novaConexao && clienteMac()) { try { const r = await fetch(SERVER + '/portal/pendente?mac=' + encodeURIComponent(clienteMac())); const d = await r.json(); if (d.venda_id) venda = d.venda_id; } catch (e) {} }
   if (venda) retomarPagamento(venda);

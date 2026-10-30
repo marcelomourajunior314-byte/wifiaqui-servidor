@@ -327,9 +327,9 @@ export default {
       if (p === '/portal/pendente') {
         const mac = (url.searchParams.get('mac') || '').toLowerCase();
         if (!mac) return json({ sucesso: true, venda_id: null });
-        const limite = Date.now() - 5 * 60 * 1000;
+        const limite = Date.now() - 10 * 60 * 1000;
         const v = (await lerVendas(env)).filter(x => (x.mac_cliente || '').toLowerCase() === mac && ['pendente', 'pago'].includes(x.status) && new Date(x.criado_em).getTime() > limite).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))[0];
-        return json({ sucesso: true, venda_id: v ? v.id : null });
+        return json({ sucesso: true, venda_id: v ? v.id : null, status: v ? v.status : null, url: v && v.status === 'pendente' ? (v.url_checkout || null) : null });
       }
       if (p === '/portal/historico') {
         const mac = (url.searchParams.get('mac') || '').toLowerCase();
@@ -357,9 +357,9 @@ export default {
         const d = await r.json().catch(() => ({}));
         if (!r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento' }, 500); }
         const vendas = await lerVendas(env, true);
-        vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, criado_em: agora() });
+        vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, url_checkout: d.url, criado_em: agora() });
         await salvarVendas(env, vendas);
-        if (irLink) { const lg = q.get('lg') || ''; const destino = (mac_cliente && /^http:\/\//.test(lg)) ? lg + '?username=' + encodeURIComponent('T-' + mac_cliente) + '&dst=' + encodeURIComponent(d.url) : d.url; return new Response(null, { status: 302, headers: { Location: destino } }); }
+        if (irLink) return new Response(null, { status: 302, headers: { Location: d.url } });
         return json({ sucesso: true, url_pagamento: d.url, venda_id: vendaId, plano: { nome: plano.nome, minutos: plano.minutos, preco: plano.preco } });
       }
       if (p.startsWith('/portal/status/')) {

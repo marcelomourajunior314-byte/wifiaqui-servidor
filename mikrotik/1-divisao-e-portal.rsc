@@ -23,7 +23,7 @@
 :if ([:len [find comment="WiFi Aqui - DNS"]] = 0) do={ add dst-port=53 protocol=udp action=accept comment="WiFi Aqui - DNS" }
 
 # 4) Reconexão automática pelo MAC: quem pagou volta a navegar sozinho depois de queda de energia/internet
-/ip hotspot profile set [find] login-by=mac,cookie,http-chap,http-pap,trial mac-auth-mode=mac-as-username
+/ip hotspot profile set [find] login-by=mac,cookie,http-chap,http-pap mac-auth-mode=mac-as-username
 # Acesso de teste só para concluir o pagamento (o HTTPS do checkout não passa só pelo walled garden): 3 min de internet; depois só volta a ter teste após 20 min
 /ip hotspot profile set [find] trial-uptime-limit=3m trial-uptime-reset=20m trial-user-profile=trial-wa
 
@@ -38,3 +38,10 @@
 # 5) Quem está no acesso de teste (pagando) e abrir qualquer site http volta ao portal (retoma o pagamento pelo MAC)
 :if ([:len [/ip hotspot user profile find name=trial-wa]] = 0) do={ /ip hotspot user profile add name=trial-wa address-list=trial-wa }
 :if ([:len [/ip firewall nat find comment="WiFi Aqui trial volta ao portal"]] = 0) do={ /ip firewall nat add chain=dstnat action=redirect to-ports=64874 protocol=tcp dst-port=80 src-address-list=trial-wa place-before=0 comment="WiFi Aqui trial volta ao portal" }
+
+# 6) Checkout da InfinitePay liberado SEM internet (o aparelho continua "preso" ao portal e a janela do Wi-Fi não fecha)
+:foreach h in={"checkout.infinitepay.io";"assets.infinitepay.io";"infinitepay-api-v2.services.production.infinitepay.io";"infinitepay-invoice-api.services.production.infinitepay.io";"api.lab.amplitude.com";"cdn.rudderlabs.com";"api.rudderstack.com";"www.clarity.ms";"scripts.clarity.ms";"e.clarity.ms";"c.clarity.ms";"c.msn.com";"www.googletagmanager.com";"h.online-metrix.net";"play.google.com";"pay.google.com";"www.google.com";"www.gstatic.com";"fonts.gstatic.com";"fonts.googleapis.com";"challenges.cloudflare.com";"speed.cloudflare.com"} do={
+  :if ([:len [/ip firewall address-list find where list=wa-checkout address=$h]] = 0) do={ /ip firewall address-list add list=wa-checkout address=$h comment="WiFi Aqui checkout" }
+}
+:if ([:len [/ip firewall filter find where comment="WiFi Aqui checkout"]] = 0) do={ /ip firewall filter add chain=forward src-address=192.168.50.0/24 dst-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout" }
+:if ([:len [/ip firewall nat find where comment="WiFi Aqui checkout"]] = 0) do={ /ip firewall nat add chain=dstnat src-address=192.168.50.0/24 dst-address-list=wa-checkout action=accept place-before=0 comment="WiFi Aqui checkout" }
