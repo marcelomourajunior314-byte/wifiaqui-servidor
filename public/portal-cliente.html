@@ -458,6 +458,19 @@ async function iniciarPagamento() {
     return;
   }
 
+  // Link real, aberto no toque do cliente (síncrono): o servidor cria o pagamento e redireciona; no iPhone isso pode abrir fora da janela do Wi-Fi
+  if (clienteMac()) {
+    const irUrl = SERVER + '/portal/ir?plano=' + encodeURIComponent(selectedPlanId) + '&nome=' + encodeURIComponent(nome) + '&cel=' + encodeURIComponent(celular) + '&mac=' + encodeURIComponent(clienteMac()) + '&ip=' + encodeURIComponent(clienteIp() || '') + '&lg=' + encodeURIComponent(clienteLg() || '');
+    window.open(irUrl, '_blank');
+    aguardandoVolta = true;
+    clearInterval(pollingInterval);
+    pollingInterval = setInterval(async () => {
+      if (!vendaId) { try { const r = await fetch(SERVER + '/portal/pendente?mac=' + encodeURIComponent(clienteMac())); const d = await r.json(); if (d.venda_id) { vendaId = d.venda_id; try { localStorage.setItem('wa_pend', JSON.stringify({ id: vendaId, t: Date.now() })); } catch (e) {} } } catch (e) {} }
+      verificarPagamento();
+    }, 4000);
+    return;
+  }
+
   const btn = document.getElementById('btnPay');
   btn.disabled = true;
   btn.querySelector('.btn-inner').innerHTML = '<div class="spinner" style="border-color:#000;border-top-color:#0099cc;width:20px;height:20px"></div> Aguarde...';

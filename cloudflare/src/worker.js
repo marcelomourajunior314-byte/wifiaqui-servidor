@@ -333,8 +333,9 @@ export default {
         return json({ sucesso: true, compras });
       }
       if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env)).filter(x => x.ativo) });
-      if (p === '/portal/iniciar-pagamento' && m === 'POST') {
-        const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = await corpo(req);
+      if ((p === '/portal/iniciar-pagamento' && m === 'POST') || (p === '/portal/ir' && m === 'GET')) {
+        const irLink = p === '/portal/ir'; const q = url.searchParams;
+        const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = irLink ? { plano_id: q.get('plano'), mac_cliente: q.get('mac'), ip_cliente: q.get('ip'), cliente_nome: q.get('nome'), cliente_celular: q.get('cel') } : await corpo(req);
         const plano = (await lerPlanos(env)).find(x => x.id === plano_id);
         if (!plano) return json({ sucesso: false, erro: 'Plano não encontrado' }, 400);
         const vendaId = crypto.randomUUID(); const ip = ip_cliente || ipDe(req);
@@ -352,6 +353,7 @@ export default {
         const vendas = await lerVendas(env, true);
         vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, criado_em: agora() });
         await salvarVendas(env, vendas);
+        if (irLink) { const lg = q.get('lg') || ''; const destino = (mac_cliente && /^http:\/\//.test(lg)) ? lg + '?username=' + encodeURIComponent('T-' + mac_cliente) + '&dst=' + encodeURIComponent(d.url) : d.url; return new Response(null, { status: 302, headers: { Location: destino } }); }
         return json({ sucesso: true, url_pagamento: d.url, venda_id: vendaId, plano: { nome: plano.nome, minutos: plano.minutos, preco: plano.preco } });
       }
       if (p.startsWith('/portal/status/')) {
