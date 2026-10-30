@@ -329,7 +329,7 @@ export default {
         const mac = (url.searchParams.get('mac') || '').toLowerCase();
         if (!mac) return json({ sucesso: true, compras: [] });
         const planos = await lerPlanos(env);
-        const compras = (await lerVendas(env)).filter(x => (x.mac_cliente || '').toLowerCase() === mac).sort((a, b) => b.criado_em.localeCompare(a.criado_em)).slice(0, 10).map(x => { const pl = planos.find(y => y.id === x.plano_id); return { id: x.id.slice(0, 8), plano: pl?.nome || '', minutos: pl?.minutos || 0, valor: x.valor, status: x.status, criado_em: x.criado_em, inicio_sessao: x.inicio_sessao || null }; });
+        const compras = (await lerVendas(env)).filter(x => (x.mac_cliente || '').toLowerCase() === mac && x.status === 'pago').sort((a, b) => b.criado_em.localeCompare(a.criado_em)).slice(0, 10).map(x => { const pl = planos.find(y => y.id === x.plano_id); return { id: x.id.slice(0, 8), plano: pl?.nome || '', minutos: pl?.minutos || 0, valor: x.valor, status: x.status, criado_em: x.criado_em, inicio_sessao: x.inicio_sessao || null }; });
         return json({ sucesso: true, compras });
       }
       if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env)).filter(x => x.ativo) });
