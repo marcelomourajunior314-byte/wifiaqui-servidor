@@ -468,8 +468,13 @@ async function iniciarPagamento() {
     // Abre checkout InfinitePay em nova aba
     window.open(urlPagamento(data.url_pagamento), '_blank');
 
-    // Mostra tela de aguardo
-    mostrarTelaAguardo();
+    // Não mostra "aguardando" agora: só quando o cliente voltar ao portal (depois de copiar o Pix/código).
+    // Enquanto isso, confere o pagamento em silêncio.
+    btn.disabled = false;
+    btn.querySelector('.btn-inner').innerHTML = 'Pagar agora';
+    aguardandoVolta = true;
+    clearInterval(pollingInterval);
+    pollingInterval = setInterval(verificarPagamento, 5000);
 
   } catch (e) {
     console.error(e);
@@ -482,7 +487,11 @@ async function iniciarPagamento() {
   }
 }
 
+let aguardandoVolta = false;
+document.addEventListener('visibilitychange', () => { if (!document.hidden && aguardandoVolta && vendaId) { aguardandoVolta = false; mostrarTelaAguardo(); } });
+window.addEventListener('pageshow', () => { if (aguardandoVolta && vendaId) { aguardandoVolta = false; mostrarTelaAguardo(); } });
 function mostrarTelaAguardo() {
+  clearInterval(pollingInterval); clearInterval(pixTimerInterval);
   document.getElementById('mainScreen').style.display = 'none';
   document.getElementById('pixScreen').classList.add('active');
 
