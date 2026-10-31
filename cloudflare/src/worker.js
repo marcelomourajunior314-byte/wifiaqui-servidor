@@ -181,7 +181,7 @@ async function processarPagamento(body, env) {
   if (i < 0) { // venda sumiu do registro: reconstrói pela descrição da cobrança (plano, IP e MAC vão nela) para o pagamento nunca se perder
     const d0 = items?.[0]?.description || ''; const nomePl = d0.match(/WiFi Aqui \| ([^(|]+?)\s*\(/)?.[1]?.trim();
     const pl0 = nomePl ? (await lerPlanos(env)).find(p => p.nome === nomePl) : null;
-    if (pl0) { vendas.push({ id: order_nsu, plano_id: pl0.id, mac_cliente: d0.match(/MAC:([^|]+)/)?.[1]?.trim() || null, ip_cliente: d0.match(/IP:([^|]+)/)?.[1]?.trim() || null, valor: pl0.preco, status: 'pendente', payment_id: order_nsu, criado_em: agora(), reconstruida: true }); i = vendas.length - 1; }
+    if (pl0) { vendas.push({ id: order_nsu, plano_id: pl0.id, mac_cliente: d0.match(/MAC:([^|]+)/)?.[1]?.trim() || null, cliente_nome: d0.match(/NOME:([^|]+)/)?.[1]?.trim() || null, cliente_celular: d0.match(/CEL:([^|]+)/)?.[1]?.trim() || null, ip_cliente: d0.match(/IP:([^|]+)/)?.[1]?.trim() || null, valor: pl0.preco, status: 'pendente', payment_id: order_nsu, criado_em: agora(), reconstruida: true }); i = vendas.length - 1; }
   }
   if (i < 0) { await telegram(env, `⚠️ WiFi Aqui: aviso de pagamento para venda desconhecida (${order_nsu}). Se o valor caiu, libere manualmente.`); return; }
   if (vendas[i].status === 'pago') return;
@@ -293,7 +293,7 @@ async function sincronizar(req, env, ctx, url) {
 
   if (okIds.length) {
     let mudou = false;
-    vendas = vendas.map(v => okIds.includes(v.id.slice(0, 8)) && !v.liberado ? (mudou = true, { ...v, liberado: true, liberado_em: agora() }) : v);
+    vendas = vendas.map(v => okIds.includes(v.id.slice(0, 8)) && !v.liberado ? (mudou = true, { ...v, liberado: true, liberado_em: agora(), inicio_sessao: agora() }) : v);
     if (mudou) await salvarVendas(env, vendas);
   }
   // ADD <id> <usuario> <senha|-> <segundos> <ip|-> <mac|->  (cria ou devolve o tempo que faltava)
@@ -365,7 +365,7 @@ export default {
           // endereço pré-preenchido (serviço digital, sem entrega); com INFINITEPAY_API_KEY o checkout nem pede endereço
           address: { cep: '01310100', street: 'Avenida Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo', state: 'SP', complement: '' },
           ...(env.INFINITEPAY_API_KEY ? { options: { require_delivery_address: false } } : {}),
-          items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''}` }],
+          items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''} | NOME:${(cliente_nome || '').replace(/\|/g, ' ')} | CEL:${(cliente_celular || '').replace(/\|/g, ' ')}` }],
         };
         const r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) });
         const d = await r.json().catch(() => ({}));
@@ -381,7 +381,7 @@ export default {
         const v = (await lerVendas(env)).find(x => x.id === id);
         if (!v) return json({ sucesso: false, erro: 'Venda não encontrada' }, 404);
         const pl = (await lerPlanos(env)).find(x => x.id === v.plano_id);
-        return json({ sucesso: true, status: v.status, pago: v.status === 'pago', plano_id: v.plano_id, plano_minutos: pl?.minutos || 60, plano_nome: pl?.nome || '', inicio_sessao: v.inicio_sessao });
+        return json({ sucesso: true, status: v.status, pago: v.status === 'pago', plano_id: v.plano_id, plano_minutos: pl?.minutos || 60, plano_nome: pl?.nome || '', liberado: !!v.liberado, inicio_sessao: v.liberado ? (v.liberado_em || v.inicio_sessao) : null });
       }
       // Webhook
       if (p === '/webhook/infinitepay' && m === 'POST') {

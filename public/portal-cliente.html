@@ -47,6 +47,8 @@ input.err{border-color:#f87171}
     <div id="navDica" class="note" style="margin-top:8px"></div>
   </div>
 
+  <div id="aguarde" class="card hide" style="text-align:center;border-color:#10b981">✅ Pagamento confirmado! Liberando seu acesso… o tempo começa a contar só quando a internet abrir.</div>
+
   <button id="contBtn" class="btn alt hide">Continuar meu pagamento</button>
 
   <div class="card"><h2>Escolha seu plano</h2><div id="planos"><div class="note">Carregando…</div></div></div>
@@ -126,12 +128,14 @@ function vigiar() {
       if (!vendaId && clienteMac()) { const d = await (await fetch('/portal/pendente?mac=' + encodeURIComponent(clienteMac()))).json(); if (d.venda_id) vendaId = d.venda_id; }
       if (!vendaId) return;
       const s = await (await fetch('/portal/status/' + vendaId)).json();
-      if (s.sucesso && s.pago) { clearInterval(timer); liberado(s); }
+      if (s.sucesso && s.pago && s.liberado) { clearInterval(timer); liberado(s); }
+      else if (s.sucesso && s.pago) $('aguarde').classList.remove('hide');
     } catch (e) {}
   }, 3000);
 }
 function liberado(s) {
   $('main').classList.add('hide'); $('done').classList.remove('hide');
+  $('aguarde').classList.add('hide');
   const fim = new Date(s.inicio_sessao || Date.now()).getTime() + (s.plano_minutos || 60) * 60000;
   const tick = () => { const r = Math.max(0, Math.round((fim - Date.now()) / 1000)); $('tempo').textContent = String(Math.floor(r / 60)).padStart(2, '0') + ':' + String(r % 60).padStart(2, '0'); };
   tick(); setInterval(tick, 1000);
@@ -142,7 +146,7 @@ function liberado(s) {
   if (!clienteMac()) return;
   try {
     const d = await (await fetch('/portal/pendente?mac=' + encodeURIComponent(clienteMac()))).json();
-    if (d.venda_id && d.status === 'pago' && !fresco) { const s = await (await fetch('/portal/status/' + d.venda_id)).json(); if (s.pago) { liberado(s); return; } }
+    if (d.venda_id && d.status === 'pago' && !fresco) { const s = await (await fetch('/portal/status/' + d.venda_id)).json(); if (s.pago && s.liberado) { liberado(s); return; } }
     if (d.venda_id && d.status === 'pendente') {
       vendaId = d.venda_id; vigiar();
       if (d.url) { $('contBtn').classList.remove('hide'); $('contBtn').onclick = () => { if (!window.open(d.url, '_blank')) location.href = d.url; }; }
