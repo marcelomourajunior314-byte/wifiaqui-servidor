@@ -8,7 +8,7 @@
 
 export const CONFIG_PADRAO = {
   automatico: true,          // false = usa só a tabela fixa
-  capacidadeMbps: 200,       // estimativa inicial da Starlink (~200 Mbps; o teste de velocidade corrige)
+  capacidadeMbps: 600,       // capacidade da internet (a linha chega a ~600 Mbps); nunca fica abaixo disso
   aprender: true,            // ajusta a capacidade pelo pico real observado
   pisoMbps: 1,               // ninguém fica abaixo disso
   faixas: [                  // limite por pessoa conforme quantas estão conectadas (0 = sem limite)
@@ -18,7 +18,7 @@ export const CONFIG_PADRAO = {
     { ate: 9999, mbps: 1.5 },
   ],
   alertas: true,             // avisos no Telegram
-  testeVelocidadeMin: 5,     // teste rápido (20 MB) a cada X min, só com a rede folgada (0 = desligado)
+  testeVelocidadeMin: 0,     // teste de velocidade do Mikrotik (mede a CPU do roteador, não a linha): desligado
 };
 
 const M = 1_000_000;
@@ -44,8 +44,9 @@ export function decidir({ n, rxBps }, cfg, anterior = {}) {
   rxBps = Math.max(0, +rxBps || 0);
 
   // capacidade estimada: pico observado que "esquece" devagar (~1h), nunca abaixo de 10 Mbps
+  // nunca abaixo da capacidade configurada (senão o sistema se "aperta" sozinho); só sobe se o tráfego real passar disso
   let capBps = anterior.capBps || cfg.capacidadeMbps * M;
-  if (cfg.aprender) capBps = Math.max(rxBps, capBps * 0.997, 10 * M);
+  if (cfg.aprender) capBps = Math.max(rxBps, capBps * Math.pow(0.997, (anterior.seg || 20) / 20), cfg.capacidadeMbps * M, 10 * M);
   else capBps = cfg.capacidadeMbps * M;
 
   const uso = capBps ? rxBps / capBps : 0;

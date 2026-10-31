@@ -43,7 +43,7 @@ const { log } = await import(pathToFileURL(tmp + '/sockets.mjs'));
 
 console.log('Servidor (cloudflare/src/worker.js)');
 let files, pc, calls;
-const reset = () => { files = { 'planos.json': { content: JSON.stringify([{ id: 'p60', nome: 'Turbo', minutos: 60, preco: 800, ativo: true }]) } }; pc = { status: 200, body: { success: true, paid: true } }; calls = []; log.length = 0; };
+const reset = () => { files = { 'planos.json': { content: JSON.stringify([{ id: 'p60', nome: 'Turbo', minutos: 60, preco: 800, ativo: true }]) }, 'rede.json': { content: JSON.stringify({ capacidadeMbps: 200, testeVelocidadeMin: 5 }) } }; pc = { status: 200, body: { success: true, paid: true } }; calls = []; log.length = 0; };
 globalThis.fetch = async (u, o = {}) => { u = String(u); const m = o.method || 'GET'; calls.push([m, u, o.body]); const J = (x, s = 200) => new Response(JSON.stringify(x), { status: s });
   if (u.includes('api.github.com/gists') && m === 'GET') return J({ files });
   if (u.includes('api.github.com/gists') && m === 'PATCH') { const b = JSON.parse(o.body).files; for (const k in b) files[k] = { content: b[k].content }; return J({}); }
@@ -140,7 +140,8 @@ ok(tx.includes(`DEL ${MAC}`), 'tempo acabou → derruba (sem ganhar tempo extra)
 // velocidade da Starlink
 env.REDE = novoDO(); passa(1); [st, tx] = await sync('n=0&rx=0&up=10m'); ok(tx.includes('SPEED'), 'pede medição da Starlink');
 passa(20); await sync('n=0&rx=0&up=10m20s&st=187000000'); let est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
-ok(est.velocidade?.bps === 187e6 && est.capBps >= 185e6, 'velocidade medida (187 Mbps) aparece no admin e vira a capacidade');
+ok(est.velocidade?.bps === 187e6 && est.capBps >= 185e6, 'velocidade medida (187 Mbps) aparece no admin e a capacidade nunca cai abaixo dela');
+{ const c = R.decidir({ n: 1, rxBps: 1e6 }, R.mesclarConfig({}), { capBps: 43e6 }); ok(c.capBps >= 600e6, 'medição baixa do Mikrotik não reduz a capacidade (piso de 600 Mbps)'); }
 passa(20); await sync('n=0&rx=0&up=10m30s&st=150000000'); passa(20); await sync('n=0&rx=0&up=10m35s&st=170000000');
 est = (await (await run('GET', '/admin/rede', null, { 'x-admin-password': 's' })).json()).estado;
 ok(est.velocidade.bps === 170e6 && est.velocidadeAnterior.bps === 150e6 && !JSON.stringify(est).includes('187000000'), 'guarda só a última e a anterior medição (a mais antiga some)');

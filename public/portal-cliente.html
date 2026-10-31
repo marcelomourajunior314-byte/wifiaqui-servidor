@@ -195,8 +195,11 @@ function novaCompra() {
   if (!cna) return;
   $('navBox').classList.remove('hide');
   const btn = $('navBtn');
-  if (and) { btn.href = 'intent://wifi.aqui/#Intent;scheme=http;package=com.android.chrome;end'; }
-  else { btn.href = 'x-safari-http://wifi.aqui'; $('navDica').textContent = 'Se não abrir: toque em “Concluir” ou “Cancelar”, abra o Safari e digite wifi.aqui'; }
+  // abre direto o endereço seguro (https) do portal, já com os dados do aparelho: sem passar pelo wifi.aqui (http), que gera o aviso de "site perigoso"
+  const par = new URLSearchParams(); if (ctx.mac) par.set('mac', ctx.mac); if (ctx.ip) par.set('ip', ctx.ip); if (ctx.lg) par.set('lg', ctx.lg);
+  const caminho = location.host + '/portal?' + par.toString();
+  if (and) { btn.href = 'intent://' + caminho + '#Intent;scheme=https;package=com.android.chrome;end'; }
+  else { btn.href = 'x-safari-https://' + caminho; $('navDica').textContent = 'Se não abrir: toque em “Concluir” ou “Cancelar”, abra o Safari e digite wifi.aqui'; }
 })();
 </script>
 </body>
