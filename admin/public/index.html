@@ -1158,7 +1158,7 @@ async function salvarPlano() {
   const min  = parseInt(document.getElementById('plMin').value);
   const prc  = Math.round(parseFloat(document.getElementById('plPreco').value)*100);
   if(!nome||!min||!prc){ toast('Preencha todos os campos','e'); return; }
-  if(prc<50){ toast('Preço mínimo R$0,50','e'); return; }
+  if(prc<100){ toast('Preço mínimo R$1,00 (limite da InfinitePay)','e'); return; }
   const btn = document.getElementById('btnSvPl');
   btn.disabled=true; btn.textContent='Salvando...';
   try {

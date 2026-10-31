@@ -43,8 +43,8 @@ async function salvar(env, nome, dados) {
   return r.ok;
 }
 let cachePlanos = { t: 0, v: null };
-async function lerPlanos(env) {
-  if (cachePlanos.v && Date.now() - cachePlanos.t < 120000) return cachePlanos.v; // portal abre mais rápido (planos mudam pouco)
+async function lerPlanos(env, fresco) {
+  if (!fresco && cachePlanos.v && Date.now() - cachePlanos.t < 5000) return cachePlanos.v; // portal abre mais rápido (planos mudam pouco)
   try { const t = await arquivo(env, await gist(env), 'planos.json'); const v = t ? JSON.parse(t) : planosDefault; cachePlanos = { t: Date.now(), v }; return v } catch { return cachePlanos.v || planosDefault }
 }
 async function lerVendas(env, fresco) { try { const t = await arquivo(env, await gist(env, fresco), 'vendas.json'); return t ? JSON.parse(t) : [] } catch { return [] } }
@@ -352,11 +352,11 @@ export default {
         const compras = (await lerVendas(env)).filter(x => (x.mac_cliente || '').toLowerCase() === mac && x.status === 'pago').sort((a, b) => b.criado_em.localeCompare(a.criado_em)).slice(0, 10).map(x => { const pl = planos.find(y => y.id === x.plano_id); return { id: x.id.slice(0, 8), plano: pl?.nome || '', minutos: pl?.minutos || 0, valor: x.valor, status: x.status, criado_em: x.criado_em, inicio_sessao: x.inicio_sessao || null }; });
         return json({ sucesso: true, compras });
       }
-      if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env)).filter(x => x.ativo) });
+      if (p === '/portal/planos') return json({ sucesso: true, planos: (await lerPlanos(env, true)).filter(x => x.ativo) });
       if ((p === '/portal/iniciar-pagamento' && m === 'POST') || (p === '/portal/ir' && m === 'GET')) {
         const irLink = p === '/portal/ir'; const q = url.searchParams;
         const { plano_id, mac_cliente, ip_cliente, cliente_nome, cliente_celular } = irLink ? { plano_id: q.get('plano'), mac_cliente: q.get('mac'), ip_cliente: q.get('ip'), cliente_nome: q.get('nome'), cliente_celular: q.get('cel') } : await corpo(req);
-        const plano = (await lerPlanos(env)).find(x => x.id === plano_id);
+        const plano = (await lerPlanos(env, true)).find(x => x.id === plano_id); // sempre o plano mais recente do admin
         if (!plano) return json({ sucesso: false, erro: 'Plano não encontrado' }, 400);
         const vendaId = crypto.randomUUID(); const ip = ip_cliente || ipDe(req);
         const payload = {
@@ -372,7 +372,7 @@ export default {
           try { r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) }); d = await r.json().catch(() => ({})); } catch (e) { r = null; d = { erro_rede: e.message }; }
           if (r && r.ok && d.url) break; console.error('InfinitePay tentativa', t + 1, r && r.status, JSON.stringify(d)); await new Promise(x => setTimeout(x, 700));
         }
-        if (!r || !r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento' }, 500); }
+        if (!r || !r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento', detalhe: (d && (d.message || d.error || d.erro)) || (r ? 'HTTP ' + r.status : 'sem resposta'), preco_centavos: Math.round(plano.preco) }, 500); }
         const vendas = await lerVendasParaGravar(env);
         vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, url_checkout: d.url, criado_em: agora() });
         if (!(await salvarVendas(env, vendas)) && !(await salvarVendas(env, vendas))) console.error('venda não gravada', vendaId);
