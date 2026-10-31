@@ -24,6 +24,6 @@ add name=wifiaqui-sync policy=ftp,read,write,policy,test source=(":local url \"h
 
 /system scheduler
 :if ([:len [find name="wifiaqui-sync"]] > 0) do={ remove [find name="wifiaqui-sync"] }
-add name=wifiaqui-sync interval=20s on-event="/system script run wifiaqui-sync" policy=ftp,read,write,policy,test comment="WiFi Aqui"
+add name=wifiaqui-sync interval=5s on-event="/system script run wifiaqui-sync" policy=ftp,read,write,policy,test comment="WiFi Aqui"
 :set waToken ""
 :log info "WiFi Aqui: sincronizacao agendada a cada 20s"

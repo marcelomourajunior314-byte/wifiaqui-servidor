@@ -44,7 +44,7 @@ async function salvar(env, nome, dados) {
 }
 let cachePlanos = { t: 0, v: null };
 async function lerPlanos(env) {
-  if (cachePlanos.v && Date.now() - cachePlanos.t < 30000) return cachePlanos.v; // portal abre mais rápido (planos mudam pouco)
+  if (cachePlanos.v && Date.now() - cachePlanos.t < 120000) return cachePlanos.v; // portal abre mais rápido (planos mudam pouco)
   try { const t = await arquivo(env, await gist(env), 'planos.json'); const v = t ? JSON.parse(t) : planosDefault; cachePlanos = { t: Date.now(), v }; return v } catch { return cachePlanos.v || planosDefault }
 }
 async function lerVendas(env, fresco) { try { const t = await arquivo(env, await gist(env, fresco), 'vendas.json'); return t ? JSON.parse(t) : [] } catch { return [] } }

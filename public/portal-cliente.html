@@ -92,8 +92,8 @@ let plano = null, vendaId = null, timer = null;
 // ---- planos
 const fmt = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',');
 const dur = (m) => m >= 60 ? (m / 60) + (m === 60 ? ' hora' : ' horas') : m + (m === 1 ? ' minuto' : ' minutos');
-fetch('/portal/planos').then(r => r.json()).then(d => {
-  const el = $('planos'); el.innerHTML = '';
+function mostrarPlanos(d) {
+  const el = $('planos'); el.innerHTML = ''; plano = null; $('form').classList.add('hide'); $('pagar').classList.add('hide');
   (d.planos || []).forEach(p => {
     const b = document.createElement('div'); b.className = 'plan';
     b.innerHTML = '<div><div class="n"></div><div class="d"></div></div><div class="p"></div>';
@@ -101,7 +101,14 @@ fetch('/portal/planos').then(r => r.json()).then(d => {
     b.onclick = () => { plano = p; document.querySelectorAll('.plan').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); $('form').classList.remove('hide'); $('pagar').classList.remove('hide'); $('pagar').textContent = 'Pagar ' + fmt(p.preco); atualizar(); };
     el.appendChild(b);
   });
-}).catch(() => { $('planos').innerHTML = '<div class="note">Não foi possível carregar os planos. Tente de novo.</div>'; });
+}
+// planos aparecem na hora (cópia guardada no aparelho) e são atualizados em seguida
+let planosCache = null; try { planosCache = JSON.parse(localStorage.getItem('wa_planos') || 'null'); } catch (e) {}
+if (planosCache && planosCache.planos) mostrarPlanos(planosCache);
+fetch('/portal/planos').then(r => r.json()).then(d => {
+  try { localStorage.setItem('wa_planos', JSON.stringify(d)); } catch (e) {}
+  if (!planosCache || JSON.stringify(planosCache.planos) !== JSON.stringify(d.planos)) mostrarPlanos(d);
+}).catch(() => { if (!planosCache) $('planos').innerHTML = '<div class="note">Não foi possível carregar os planos. Tente de novo.</div>'; });
 
 // ---- pagamento: toque do cliente -> servidor cria a cobrança e leva ao checkout
 function urlIr() {
