@@ -365,11 +365,14 @@ export default {
           // endereço pré-preenchido (serviço digital, sem entrega); com INFINITEPAY_API_KEY o checkout nem pede endereço
           address: { cep: '01310100', street: 'Avenida Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo', state: 'SP', complement: '' },
           ...(env.INFINITEPAY_API_KEY ? { options: { require_delivery_address: false } } : {}),
-          items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''}` }],
+          items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''} | NOME:${(cliente_nome || '').replace(/\|/g, ' ')} | CEL:${(cliente_celular || '').replace(/\|/g, ' ')}` }],
         };
-        const r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento' }, 500); }
+        let r, d = {};
+        for (let t = 0; t < 3; t++) { // a InfinitePay às vezes falha por um instante: tenta de novo antes de desistir
+          try { r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) }); d = await r.json().catch(() => ({})); } catch (e) { r = null; d = { erro_rede: e.message }; }
+          if (r && r.ok && d.url) break; console.error('InfinitePay tentativa', t + 1, r && r.status, JSON.stringify(d)); await new Promise(x => setTimeout(x, 700));
+        }
+        if (!r || !r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento' }, 500); }
         const vendas = await lerVendasParaGravar(env);
         vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, url_checkout: d.url, criado_em: agora() });
         if (!(await salvarVendas(env, vendas)) && !(await salvarVendas(env, vendas))) console.error('venda não gravada', vendaId);
