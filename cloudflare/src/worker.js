@@ -365,7 +365,7 @@ export default {
           // endereço pré-preenchido (serviço digital, sem entrega); com INFINITEPAY_API_KEY o checkout nem pede endereço
           address: { cep: '01310100', street: 'Avenida Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo', state: 'SP', complement: '' },
           ...(env.INFINITEPAY_API_KEY ? { options: { require_delivery_address: false } } : {}),
-          items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''} | NOME:${(cliente_nome || '').replace(/\|/g, ' ')} | CEL:${(cliente_celular || '').replace(/\|/g, ' ')}` }],
+          items: [{ quantity: 1, price: Math.round(plano.preco), description: `WiFi Aqui | ${plano.nome} (${plano.minutos}min) | IP:${ip || ''} | MAC:${mac_cliente || ''}` }],
         };
         const r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) });
         const d = await r.json().catch(() => ({}));
