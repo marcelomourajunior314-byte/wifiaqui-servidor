@@ -23,7 +23,7 @@ const gh = env => ({ 'Accept': 'application/vnd.github.v3+json', 'User-Agent': '
 async function gist(env, fresco = false) {
   if (!fresco && cache.gist && Date.now() - cache.t < 4000) return cache.gist;
   const r = await fetch(`https://api.github.com/gists/${env.WIFIAQUI_GIST_ID}`, { headers: gh(env) });
-  if (!r.ok) { console.error('gist', r.status); return cache.gist; }
+  if (!r.ok) { console.error('gist', r.status); if (fresco) throw new Error('gist ' + r.status); return cache.gist; }
   cache = { t: Date.now(), gist: await r.json() };
   return cache.gist;
 }
@@ -48,6 +48,14 @@ async function lerPlanos(env) {
   try { const t = await arquivo(env, await gist(env), 'planos.json'); const v = t ? JSON.parse(t) : planosDefault; cachePlanos = { t: Date.now(), v }; return v } catch { return cachePlanos.v || planosDefault }
 }
 async function lerVendas(env, fresco) { try { const t = await arquivo(env, await gist(env, fresco), 'vendas.json'); return t ? JSON.parse(t) : [] } catch { return [] } }
+// Para quem vai GRAVAR: tenta de novo e, se não conseguir ler, falha (nunca devolve lista vazia que apagaria o histórico)
+async function lerVendasParaGravar(env) {
+  let erro;
+  for (let t = 0; t < 3; t++) {
+    try { const g = await gist(env, true); const tx = await arquivo(env, g, 'vendas.json'); return tx ? JSON.parse(tx) : []; } catch (e) { erro = e; await new Promise(r => setTimeout(r, 800)); }
+  }
+  throw erro || new Error('vendas ilegíveis');
+}
 const salvarVendas = (env, v) => salvar(env, 'vendas.json', v.slice(-500));
 const salvarPlanos = (env, p) => salvar(env, 'planos.json', p);
 
@@ -167,8 +175,14 @@ async function confirmarPagamento(env, body) {
 async function processarPagamento(body, env) {
   const { order_nsu, items } = body || {};
   if (!order_nsu) return;
-  const vendas = await lerVendas(env, true);
-  const i = vendas.findIndex(v => v.id === order_nsu);
+  let vendas = await lerVendasParaGravar(env);
+  let i = vendas.findIndex(v => v.id === order_nsu);
+  for (let t = 0; i < 0 && t < 3; t++) { await new Promise(r => setTimeout(r, 2500)); vendas = await lerVendasParaGravar(env); i = vendas.findIndex(v => v.id === order_nsu); }
+  if (i < 0) { // venda sumiu do registro: reconstrói pela descrição da cobrança (plano, IP e MAC vão nela) para o pagamento nunca se perder
+    const d0 = items?.[0]?.description || ''; const nomePl = d0.match(/WiFi Aqui \| ([^(|]+?)\s*\(/)?.[1]?.trim();
+    const pl0 = nomePl ? (await lerPlanos(env)).find(p => p.nome === nomePl) : null;
+    if (pl0) { vendas.push({ id: order_nsu, plano_id: pl0.id, mac_cliente: d0.match(/MAC:([^|]+)/)?.[1]?.trim() || null, ip_cliente: d0.match(/IP:([^|]+)/)?.[1]?.trim() || null, valor: pl0.preco, status: 'pendente', payment_id: order_nsu, criado_em: agora(), reconstruida: true }); i = vendas.length - 1; }
+  }
   if (i < 0) { await telegram(env, `⚠️ WiFi Aqui: aviso de pagamento para venda desconhecida (${order_nsu}). Se o valor caiu, libere manualmente.`); return; }
   if (vendas[i].status === 'pago') return;
   const conf = await confirmarPagamento(env, body);
@@ -356,9 +370,9 @@ export default {
         const r = await fetch('https://api.checkout.infinitepay.io/links', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(env.INFINITEPAY_API_KEY ? { 'X-Api-Key': env.INFINITEPAY_API_KEY } : {}) }, body: JSON.stringify(payload) });
         const d = await r.json().catch(() => ({}));
         if (!r.ok || !d.url) { console.error('InfinitePay', JSON.stringify(d)); return json({ sucesso: false, erro: 'Erro ao processar pagamento' }, 500); }
-        const vendas = await lerVendas(env, true);
+        const vendas = await lerVendasParaGravar(env);
         vendas.push({ id: vendaId, plano_id: plano.id, mac_cliente: mac_cliente || null, ip_cliente: ip, cliente_nome: cliente_nome || null, cliente_celular: cliente_celular || null, valor: plano.preco, status: 'pendente', payment_id: vendaId, url_checkout: d.url, criado_em: agora() });
-        await salvarVendas(env, vendas);
+        if (!(await salvarVendas(env, vendas)) && !(await salvarVendas(env, vendas))) console.error('venda não gravada', vendaId);
         if (irLink) { const lg = q.get('lg') || ''; const destino = (mac_cliente && /^http:\/\//.test(lg)) ? lg + '?username=' + encodeURIComponent('T-' + mac_cliente) + '&dst=' + encodeURIComponent(d.url) : d.url; return new Response(null, { status: 302, headers: { Location: destino } }); }
         return json({ sucesso: true, url_pagamento: d.url, venda_id: vendaId, plano: { nome: plano.nome, minutos: plano.minutos, preco: plano.preco } });
       }
