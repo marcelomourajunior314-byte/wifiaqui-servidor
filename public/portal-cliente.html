@@ -66,12 +66,12 @@ input.err{border-color:#f87171}
 </div>
 
 <div id="done" class="ok hide">
-  <div style="font-size:54px">✅</div>
-  <h1>Você está conectado!</h1>
+  <div id="doneIco" style="font-size:54px">✅</div>
+  <h1 id="doneTit">Você está conectado!</h1>
   <div class="big" id="tempo">--:--</div>
   <div class="sub">tempo restante de conexão</div>
-  <div class="note" style="margin-top:18px">Quando o tempo acabar a conexão encerra sozinha.<br>Para continuar, é só comprar um novo plano.</div>
-  <button class="btn alt" onclick="location.reload()">Comprar mais tempo</button>
+  <div id="doneNote" class="note" style="margin-top:18px">Quando o tempo acabar a conexão encerra sozinha.<br>Para continuar, é só comprar um novo plano.</div>
+  <button class="btn alt" onclick="novaCompra()">Comprar mais tempo</button>
 </div>
 </div>
 
@@ -86,7 +86,8 @@ const ctx = (() => {
   return c;
 })();
 const clienteMac = () => ctx.mac, clienteIp = () => ctx.ip, clienteLg = () => ctx.lg;
-const fresco = !!q.get('lg'); // chegou agora pelo login do hotspot (conexão nova)
+const nova = !!q.get('nova'); // veio do botão "comprar mais tempo": não retoma compra antiga
+const fresco = !!q.get('lg') || nova; // chegou agora pelo login do hotspot (conexão nova)
 let plano = null, vendaId = null, timer = null;
 
 // ---- planos
@@ -140,20 +141,38 @@ function vigiar() {
     } catch (e) {}
   }, 3000);
 }
-function liberado(s) {
+function liberado(s, aoAbrir) {
+  const fim0 = new Date(s.inicio_sessao || Date.now()).getTime() + (s.plano_minutos || 60) * 60000;
+  if (aoAbrir && fim0 <= Date.now()) return false; // tempo já acabou: mostra o portal para comprar de novo
   $('main').classList.add('hide'); $('done').classList.remove('hide');
   $('aguarde').classList.add('hide');
   const fim = new Date(s.inicio_sessao || Date.now()).getTime() + (s.plano_minutos || 60) * 60000;
-  const tick = () => { const r = Math.max(0, Math.round((fim - Date.now()) / 1000)); $('tempo').textContent = String(Math.floor(r / 60)).padStart(2, '0') + ':' + String(r % 60).padStart(2, '0'); };
+  const tick = () => { const r = Math.max(0, Math.round((fim - Date.now()) / 1000)); if (r === 0) { $('doneIco').textContent = '⏰'; $('doneTit').textContent = 'Seu tempo acabou'; $('doneNote').textContent = 'Para continuar navegando, compre um novo plano.'; } $('tempo').textContent = String(Math.floor(r / 60)).padStart(2, '0') + ':' + String(r % 60).padStart(2, '0'); };
   tick(); setInterval(tick, 1000);
+  return true;
+}
+function novaCompra() {
+  const u = new URLSearchParams(); if (ctx.mac) u.set('mac', ctx.mac); if (ctx.ip) u.set('ip', ctx.ip); if (ctx.lg) u.set('lg', ctx.lg); u.set('nova', '1');
+  location.href = '/portal?' + u.toString();
 }
 
 // ---- voltar ao pagamento / histórico
 (async () => {
+  // voltou do checkout da InfinitePay (?venda=...): mostra o cronômetro desta compra, mesmo em outro navegador
+  const venda = q.get('venda');
+  if (venda && !nova) {
+    try {
+      const s = await (await fetch('/portal/status/' + encodeURIComponent(venda))).json();
+      if (s.sucesso && s.pago) {
+        vendaId = venda;
+        if (s.liberado) { if (liberado(s, true)) return; } else { $('aguarde').classList.remove('hide'); vigiar(); }
+      }
+    } catch (e) {}
+  }
   if (!clienteMac()) return;
   try {
     const d = await (await fetch('/portal/pendente?mac=' + encodeURIComponent(clienteMac()))).json();
-    if (d.venda_id && d.status === 'pago' && !fresco) { const s = await (await fetch('/portal/status/' + d.venda_id)).json(); if (s.pago && s.liberado) { liberado(s); return; } }
+    if (d.venda_id && d.status === 'pago' && !fresco) { const s = await (await fetch('/portal/status/' + d.venda_id)).json(); if (s.pago && s.liberado && liberado(s, true)) return; if (s.pago && !s.liberado) { vendaId = d.venda_id; $('aguarde').classList.remove('hide'); vigiar(); } }
     if (d.venda_id && d.status === 'pendente') {
       vendaId = d.venda_id; vigiar();
       if (d.url) { $('contBtn').classList.remove('hide'); $('contBtn').onclick = () => { if (!window.open(d.url, '_blank')) location.href = d.url; }; }
