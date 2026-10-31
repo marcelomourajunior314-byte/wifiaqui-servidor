@@ -397,7 +397,16 @@ export default {
         const senha = req.headers.get('x-admin-password') || url.searchParams.get('senha');
         if (!env.ADMIN_PASSWORD || senha !== env.ADMIN_PASSWORD) return json({ erro: 'Não autorizado' }, 401);
         if (p === '/admin/dashboard') {
-          const [ativos, vendas] = await Promise.all([env.MIKROTIK_HOST ? mkAtivos(env) : redeChamar(env, '/estado').then(e => e.ativos || []).catch(() => []), lerVendas(env)]);
+          const [ativos0, vendas, estado] = await Promise.all([env.MIKROTIK_HOST ? mkAtivos(env) : null, lerVendas(env), redeChamar(env, '/estado').catch(() => ({}))]);
+          const planosAdm = await lerPlanos(env);
+          // cada cliente conectado ganha: plano, nome/celular, tempo total e quanto falta
+          const ativos = (ativos0 || estado.ativos || []).map(c => {
+            const ac = (estado.acessos || []).find(a => a.usuario === c.usuario || (a.mac && c.mac && a.mac.toUpperCase() === c.mac.toUpperCase()));
+            const ven = vendas.filter(v => v.status === 'pago' && (v.mikrotik_user === c.usuario || (v.mac_cliente && c.mac && v.mac_cliente.toUpperCase() === c.mac.toUpperCase()))).sort((x, y) => (y.criado_em || '').localeCompare(x.criado_em || ''))[0];
+            const pl = ven && planosAdm.find(x => x.id === ven.plano_id);
+            const teste = /^T-/.test(c.usuario || '');
+            return { ...c, plano: teste ? 'Teste grátis' : (pl?.nome || null), cliente_nome: ven?.cliente_nome || null, cliente_celular: ven?.cliente_celular || null, restaMin: ac ? ac.restaMin : null, totalMin: ac ? ac.totalMin : (pl?.minutos || null) };
+          });
           const pagas = vendas.filter(v => v.status === 'pago');
           const de = pref => pagas.filter(v => v.criado_em?.startsWith(pref));
           return json({ sucesso: true, resumo: { vendas_hoje: de(hoje()).length, receita_hoje: de(hoje()).reduce((s, v) => s + (v.valor || 0), 0), vendas_mes: de(mes()).length, receita_mes: de(mes()).reduce((s, v) => s + (v.valor || 0), 0), total_vendas: pagas.length, clientes_ativos: ativos.length },

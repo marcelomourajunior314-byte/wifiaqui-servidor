@@ -995,9 +995,9 @@ function renderClientes(lista) {
       <div class="cl-av">📱</div>
       <div class="cl-inf">
         <div class="cl-user">${c.usuario||'cliente'}</div>
-        <div class="cl-meta">${c.ip||''} ${c.mac?'· '+c.mac:''}</div>
+        <div class="cl-meta">${c.plano ? '<b>'+c.plano+'</b>'+(c.totalMin?' · '+c.totalMin+' min':'')+' · ' : ''}${c.cliente_nome ? c.cliente_nome+(c.cliente_celular?' ('+c.cliente_celular+')':'')+' · ' : ''}${c.ip||''} ${c.mac?'· '+c.mac:''}</div>
       </div>
-      <div class="cl-time">${c.sessao||c.uptime||'—'}</div>
+      <div class="cl-time">${c.restaMin != null ? 'faltam <b>'+c.restaMin+'</b> min' : (c.sessao||c.uptime||'—')}</div>
       <button class="btn-kick" onclick="kickCliente('${c.usuario}')">✕</button>
     </div>`).join('') + '</div>';
 }
